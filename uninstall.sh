@@ -62,3 +62,6 @@ echo "======================================"
 echo -e "${GREEN}  Uninstall Complete${NC}"
 echo "======================================"
 echo ""
+
+# Move back to parent directory so user isn't left in a non-existent directory
+cd "$PARENT_DIR" 2>/dev/null || cd ~
