@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # DAC-EQ Uninstallation Script
-# Removes virtual environment and MCP configuration
+# Completely removes dac-eq and all files
 
 # Color codes for output
 RED='\033[0;31m'
@@ -11,55 +11,53 @@ NC='\033[0m' # No Color
 
 # Get installation directory
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARENT_DIR="$(dirname "$INSTALL_DIR")"
+INSTALL_NAME="$(basename "$INSTALL_DIR")"
 
 echo "======================================"
 echo "  DAC-EQ Uninstallation"
 echo "======================================"
 echo ""
-echo "This will remove:"
+echo -e "${YELLOW}⚠ This will completely remove dac-eq${NC}"
+echo ""
+echo "Including:"
+echo "  - All source code"
 echo "  - Virtual environment (venv/)"
 echo "  - MCP configuration (.mcp.json)"
-echo "  - EQ profiles in eq/ folder"
-echo ""
-echo -e "${YELLOW}⚠ Important: Your EQ profiles will be deleted!${NC}"
-echo ""
-echo "If you want to keep your EQ profiles, cancel this script and manually"
-echo "copy the eq/ folder to a backup location before uninstalling:"
-echo "  cp -r eq/ ~/my-backup-location/"
+echo "  - EQ profiles (eq/ folder)"
 echo ""
 
-read -p "Do you want to continue with uninstall? (y/N): " confirm
+read -p "Before continuing: Have you backed up your EQ profiles? (y/N): " backup_confirm
 
-if [[ "$confirm" != "y" ]] && [[ "$confirm" != "Y" ]]; then
+if [[ "$backup_confirm" != "y" ]] && [[ "$backup_confirm" != "Y" ]]; then
+    echo ""
+    echo "To backup your profiles, run:"
+    echo "  cp -r eq/ ~/my-backup-location/"
+    echo ""
+    echo "Then run this script again."
+    exit 0
+fi
+
+echo ""
+read -p "Permanently delete dac-eq? This cannot be undone. (y/N): " final_confirm
+
+if [[ "$final_confirm" != "y" ]] && [[ "$final_confirm" != "Y" ]]; then
     echo "Uninstall cancelled."
     exit 0
 fi
 
 echo ""
-echo "Uninstalling..."
+echo "Removing dac-eq..."
 
-# Remove virtual environment
-if [ -d "$INSTALL_DIR/venv" ]; then
-    rm -rf "$INSTALL_DIR/venv"
-    echo -e "${GREEN}✓${NC} Removed virtual environment"
-else
-    echo "Virtual environment not found (already removed)"
-fi
+# Change to parent directory first (so we can delete the directory we're in)
+cd "$PARENT_DIR" || exit 1
 
-# Remove .mcp.json
-if [ -f "$INSTALL_DIR/.mcp.json" ]; then
-    rm -f "$INSTALL_DIR/.mcp.json"
-    echo -e "${GREEN}✓${NC} Removed MCP configuration"
+# Remove the entire installation directory
+if [ -d "$INSTALL_DIR" ]; then
+    rm -rf "$INSTALL_DIR"
+    echo -e "${GREEN}✓${NC} dac-eq completely removed"
 else
-    echo "MCP configuration not found (already removed)"
-fi
-
-# Remove EQ profiles
-if [ -d "$INSTALL_DIR/eq" ]; then
-    rm -rf "$INSTALL_DIR/eq"
-    echo -e "${GREEN}✓${NC} Removed EQ profiles"
-else
-    echo "EQ profiles not found (already removed)"
+    echo "Installation directory not found"
 fi
 
 echo ""
@@ -67,9 +65,6 @@ echo "======================================"
 echo -e "${GREEN}  Uninstall Complete${NC}"
 echo "======================================"
 echo ""
-echo "To fully remove dac-eq, delete this directory:"
-echo "  rm -rf $INSTALL_DIR"
-echo ""
-echo "To reinstall, run:"
-echo "  ./install.sh"
+echo "dac-eq has been completely removed from:"
+echo "  $INSTALL_DIR"
 echo ""
