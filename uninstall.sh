@@ -19,12 +19,16 @@ echo ""
 echo "This will remove:"
 echo "  - Virtual environment (venv/)"
 echo "  - MCP configuration (.mcp.json)"
+echo "  - EQ profiles in eq/ folder"
 echo ""
-echo -e "${YELLOW}Note: This will NOT delete the dac-eq source code.${NC}"
-echo "To fully remove dac-eq, delete this directory: $INSTALL_DIR"
+echo -e "${YELLOW}⚠ Important: Your EQ profiles will be deleted!${NC}"
+echo ""
+echo "If you want to keep your EQ profiles, cancel this script and manually"
+echo "copy the eq/ folder to a backup location before uninstalling:"
+echo "  cp -r eq/ ~/my-backup-location/"
 echo ""
 
-read -p "Continue with uninstall? (y/N): " confirm
+read -p "Do you want to continue with uninstall? (y/N): " confirm
 
 if [[ "$confirm" != "y" ]] && [[ "$confirm" != "Y" ]]; then
     echo "Uninstall cancelled."
@@ -48,6 +52,14 @@ if [ -f "$INSTALL_DIR/.mcp.json" ]; then
     echo -e "${GREEN}✓${NC} Removed MCP configuration"
 else
     echo "MCP configuration not found (already removed)"
+fi
+
+# Remove EQ profiles
+if [ -d "$INSTALL_DIR/eq" ]; then
+    rm -rf "$INSTALL_DIR/eq"
+    echo -e "${GREEN}✓${NC} Removed EQ profiles"
+else
+    echo "EQ profiles not found (already removed)"
 fi
 
 echo ""
