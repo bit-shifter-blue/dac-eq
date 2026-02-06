@@ -14,6 +14,13 @@ DAC-EQ is a tool that lets you adjust the sound of your IEMs (In-Ear Monitors) b
 
 **Based on:** devicePEQ by Pragmatic Audio (jeromeof)
 
+## Security & Trust
+
+Before installing, review [SECURITY.md](SECURITY.md) to understand:
+- What gets installed and what changes on your system
+- Security considerations and USB device access
+- How to report security issues
+
 ## Requirements
 
 - **Operating System:** macOS (required for USB HID device access)
