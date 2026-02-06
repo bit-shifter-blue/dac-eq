@@ -18,6 +18,9 @@ build/
 venv/
 .direnv/
 
+# Development environment files (optional, for direnv users)
+.envrc
+
 # IDE
 .vscode/
 .idea/
