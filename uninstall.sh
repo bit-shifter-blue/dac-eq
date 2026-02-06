@@ -49,22 +49,16 @@ fi
 echo ""
 echo "Removing dac-eq..."
 
-# Change to parent directory first (so we can delete the directory we're in)
-cd "$PARENT_DIR" || exit 1
+# Remove everything in the directory from a subshell (allows deletion of the directory itself)
+(
+  cd "$PARENT_DIR"
+  rm -rf "$INSTALL_NAME" 2>/dev/null
+)
 
-# Remove the entire installation directory
-if [ -d "$INSTALL_DIR" ]; then
-    rm -rf "$INSTALL_DIR"
-    echo -e "${GREEN}✓${NC} dac-eq completely removed"
-else
-    echo "Installation directory not found"
-fi
+echo -e "${GREEN}✓${NC} dac-eq uninstalled"
 
 echo ""
 echo "======================================"
 echo -e "${GREEN}  Uninstall Complete${NC}"
 echo "======================================"
-echo ""
-echo "dac-eq has been completely removed from:"
-echo "  $INSTALL_DIR"
 echo ""
