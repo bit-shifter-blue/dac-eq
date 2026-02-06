@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "dac-eq": {
+      "type": "stdio",
+      "comment": "DSP device control - read/write PEQ settings to USB HID devices",
+      "command": "{{INSTALL_DIR}}/venv/bin/python",
+      "args": ["{{INSTALL_DIR}}/mcp/dac-eq-mcp/server.py"],
+      "env": {}
+    },
+    "squiglink": {
+      "type": "stdio",
+      "comment": "IEM frequency response data - fetch measurements from squig.link databases",
+      "command": "{{INSTALL_DIR}}/venv/bin/python",
+      "args": ["{{INSTALL_DIR}}/mcp/squiglink-mcp/server.py"],
+      "env": {}
+    },
+    "autoeq": {
+      "type": "stdio",
+      "comment": "EQ optimization - compute optimal PEQ filters to match target curves",
+      "command": "{{INSTALL_DIR}}/venv/bin/python",
+      "args": ["{{INSTALL_DIR}}/mcp/autoeq-mcp/server.py"],
+      "env": {}
+    }
+  },
+  "_notes": {
+    "why_absolute_paths": "Claude Code's MCP protocol requires absolute paths for command and args fields. Relative paths like './venv/bin/python' won't work because Claude Code doesn't know what directory to resolve them from.",
+    "generated_by": "install.sh replaces {{INSTALL_DIR}} placeholders with actual installation path",
+    "unified_venv": "All three MCP servers use the same virtual environment (venv/bin/python) to eliminate redundant package installations and ensure consistency."
+  }
+}

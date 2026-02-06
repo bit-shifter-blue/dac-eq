@@ -1,0 +1,11 @@
+{
+  "name": "New Meta",
+  "pregain": -4.5,
+  "filters": [
+    { "freq": 105, "gain": 4.5, "q": 0.7, "type": "LSQ" },
+    { "freq": 200, "gain": -2.0, "q": 0.8, "type": "PK" },
+    { "freq": 3000, "gain": -2.5, "q": 1.5, "type": "PK" },
+    { "freq": 6000, "gain": 1.5, "q": 2.0, "type": "PK" },
+    { "freq": 10000, "gain": 1.0, "q": 0.7, "type": "HSQ" }
+  ]
+}

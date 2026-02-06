@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dac-eq"
+version = "0.1.0"
+description = "CLI and MCP servers for controlling DSP/DAC parametric EQ via USB HID"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "ISC"}
+authors = [
+    {name = "Matthew Russo"},
+]
+keywords = ["audio", "dsp", "eq", "parametric-eq", "usb", "hid", "iem", "headphones"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: ISC License (ISCL)",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Sound/Audio",
+]
+
+dependencies = [
+    "hidapi>=0.14.0",
+    "mcp>=1.0.0",
+    "scipy>=1.11.0",
+    "numpy>=1.24.0",
+    "httpx>=0.24.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bit-shifter-blue/dac-eq"
+Issues = "https://github.com/bit-shifter-blue/dac-eq/issues"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools]
+packages = ["dsp_devices", "dsp_devices.handlers"]
+
+[tool.setuptools.package-data]
+"*" = ["*.csv", "*.json"]

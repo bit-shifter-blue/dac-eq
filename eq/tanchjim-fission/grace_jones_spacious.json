@@ -1,0 +1,12 @@
+{
+  "name": "Grace Jones Spacious",
+  "description": "Significantly airier tuning for Grace Jones' sparse, atmospheric production. Relaxed upper-mids for open vocals, boosted treble for spaciousness.",
+  "pregain": -5.0,
+  "filters": [
+    { "freq": 44, "gain": 4.5, "q": 0.54, "type": "LSQ" },
+    { "freq": 243, "gain": -2.0, "q": 0.5, "type": "PK" },
+    { "freq": 1658, "gain": 2.5, "q": 0.5, "type": "PK" },
+    { "freq": 3099, "gain": -2.0, "q": 1.24, "type": "PK" },
+    { "freq": 15075, "gain": 7.0, "q": 0.77, "type": "HSQ" }
+  ]
+}

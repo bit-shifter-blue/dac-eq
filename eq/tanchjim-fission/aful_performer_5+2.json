@@ -1,0 +1,11 @@
+{
+  "name": "Aful Performer 5+2 (recomputed)",
+  "pregain": -5.2,
+  "filters": [
+    { "freq": 44.9, "gain": 4.5, "q": 0.54, "type": "LSQ" },
+    { "freq": 243.7, "gain": -3.2, "q": 0.5, "type": "PK" },
+    { "freq": 1658.8, "gain": 1.6, "q": 0.5, "type": "PK" },
+    { "freq": 3099.4, "gain": -6.5, "q": 1.24, "type": "PK" },
+    { "freq": 15075.0, "gain": 4.7, "q": 0.77, "type": "HSQ" }
+  ]
+}

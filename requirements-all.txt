@@ -1,0 +1,14 @@
+# DAC-EQ Unified Dependencies
+# All dependencies for CLI tool and MCP servers
+
+# Core USB HID communication
+hidapi>=0.14.0
+
+# MCP server protocol
+mcp>=1.0.0
+
+# AutoEQ optimization (brings scipy, numpy as transitive deps)
+autoeq>=2.0.0
+
+# HTTP client (for squiglink database fetching)
+httpx>=0.24.0

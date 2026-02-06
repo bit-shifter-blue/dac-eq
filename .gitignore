@@ -1,0 +1,49 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments (both new unified and old separate envs)
+venv/
+.direnv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local testing
+*.log
+
+# Development and planning files (not for distribution)
+claude-self-dialog/
+trash/
+interactive-dac-eq/
+DISTRIBUTION.md
+GIT_SETUP.md
+RELEASE_CHECKLIST.md
+
+# MCP server caches
+mcp/squiglink-mcp/frequency_responses/
+mcp/autoeq-mcp/__pycache__/
+
+# Per-server envrc files (consolidated to unified venv)
+mcp/*/.envrc
+
+# Redundant per-server requirements (unified file exists at root)
+mcp/squiglink-mcp/requirements.txt
+
+# Generated config (will be created by install.sh)
+.mcp.json
