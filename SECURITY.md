@@ -3,7 +3,7 @@
 ## What You're Installing
 
 DAC EQ is a Python tool that:
-- **CLI Tool (dac-eq.py):** Communicates with USB DSP/DAC devices (Tanchjim, Qudelix) via HID protocol
+- **CLI Tool (dac-eq.py):** Communicates with USB DSP/DAC devices (Tanchjim, Qudelix, Moondrop) via HID protocol
 - **MCP Servers (3 Python processes):**
   - `dac-eq-mcp`: Wraps CLI functions for Claude Code
   - `squiglink-mcp`: Fetches public IEM frequency response data

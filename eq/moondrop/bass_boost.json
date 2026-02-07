@@ -1,0 +1,11 @@
+{
+  "pregain": -3.0,
+  "filters": [
+    {
+      "freq": 105,
+      "gain": 6.0,
+      "q": 0.7,
+      "type": "LSQ"
+    }
+  ]
+}

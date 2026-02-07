@@ -7,7 +7,7 @@ Control Parametric EQ (PEQ) on USB DSP/DAC devices via command-line interface an
 DAC-EQ is a tool that lets you adjust the sound of your IEMs (In-Ear Monitors) by controlling the built-in equalizer in supported USB DAC devices. You can apply professional tuning profiles, auto-generate EQ settings based on measurements, or create custom sound signatures.
 
 **Key features:**
-- Read and write PEQ settings to DSP devices (Tanchjim, Qudelix, etc.)
+- Read and write PEQ settings to DSP devices (Tanchjim, Qudelix, Moondrop, etc.)
 - Apply EQ profiles stored as JSON files
 - Auto-generate optimal EQ from IEM frequency response measurements
 - Integrate with Claude Code for conversational EQ adjustment
@@ -36,6 +36,12 @@ Before installing, review [SECURITY.md](SECURITY.md) to understand:
 | Tanchjim Bunny DSP | ✓ | ✓ | 5 | Fully supported |
 | Tanchjim One DSP | ✓ | ✓ | 5 | Fully supported |
 | Qudelix 5K | ✓ | ✓ | 10 | USR EQ group (user preference EQ) |
+| Moondrop FreeDSP Pro | ✓ | ✓ | 8 | DSP cable (0.78mm 2-pin) |
+| Moondrop FreeDSP Mini | ✓ | ✓ | 8 | DSP cable (0.78mm 2-pin) |
+| Moondrop Rays | ✓ | ✓ | 8 | Gaming IEM with built-in DSP |
+| Moondrop Marigold | ✓ | ✓ | 8 | IEM with built-in DSP |
+| Moondrop MAY DSP | ✓ | ✓ | 8 | IEM with built-in DSP |
+| ddHiFi DSP IEM - Memory | ✓ | ✓ | 8 | Uses Moondrop protocol |
 
 More devices may work but are untested. The tool auto-detects connected devices.
 
