@@ -42,6 +42,7 @@ class TanchjimHandler(DeviceHandler):
     # Timing
     WRITE_DELAY = 0.02  # 20ms between writes
     COMMIT_DELAY = 1.0  # 1s after commit
+    READ_TIMEOUT_MS = 1000  # HID read timeout
 
     def __init__(self):
         super().__init__()
@@ -97,7 +98,7 @@ class TanchjimHandler(DeviceHandler):
             self.hid_device.close()
             self.hid_device = None
 
-    def _send_and_receive(self, packet: bytes, timeout_ms: int = 1000) -> Optional[bytes]:
+    def _send_and_receive(self, packet: bytes, timeout_ms: int = READ_TIMEOUT_MS) -> Optional[bytes]:
         """Send HID packet and receive response"""
         if not self.hid_device:
             raise DeviceNotConnectedError("Device not connected")

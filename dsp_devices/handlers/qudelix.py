@@ -54,6 +54,13 @@ class QudelixHandler(DeviceHandler):
     FILTER_TO_V3 = {"PK": 5, "LSQ": 3, "HSQ": 4, "LPF": 1, "HPF": 2}
     FILTER_FROM_V3 = {0: "PK", 1: "LPF", 2: "HPF", 3: "LSQ", 4: "HSQ", 5: "PK"}
 
+    # Timing
+    CMD_DELAY = 0.05       # 50ms after sending a command
+    SETTLE_DELAY = 0.1     # 100ms for device to settle after operations
+    INIT_DELAY = 0.3       # 300ms after init handshake
+    POLL_INTERVAL = 0.01   # 10ms polling interval when draining/collecting
+    CHUNK_TIMEOUT = 2.0    # 2s timeout for collecting chunked responses
+
     def __init__(self):
         super().__init__()
         self.hid_device: Optional[hid.device] = None
@@ -138,7 +145,7 @@ class QudelixHandler(DeviceHandler):
 
         # Request preset
         self._send_cmd(self.CMD_REQ_EQ_PRESET, [1 << group_id], drain=False)
-        time.sleep(0.1)
+        time.sleep(self.SETTLE_DELAY)
 
         # Collect chunked response
         preset_data = self._collect_chunks(group_id)
@@ -180,7 +187,7 @@ class QudelixHandler(DeviceHandler):
         for i in range(len(profile.filters), max_bands):
             self._send_cmd(self.CMD_SET_EQ_BAND_PARAM, [group_id, chan_mask, i, 0, 0, 0, 0, 0, 0, 0])
 
-        time.sleep(0.1)
+        time.sleep(self.SETTLE_DELAY)
 
     # --- Private helpers ---
 
@@ -196,7 +203,7 @@ class QudelixHandler(DeviceHandler):
         if self.debug:
             print("  Sending init handshake...")
         self._send_cmd(self.CMD_REQ_INIT_DATA, [0x00, 0x00, 0x04], drain=False)
-        time.sleep(0.3)
+        time.sleep(self.INIT_DELAY)
         self._drain_responses()
         self._initialized = True
 
@@ -213,7 +220,7 @@ class QudelixHandler(DeviceHandler):
             print(f"  CMD 0x{cmd:04X}: {' '.join(f'{b:02X}' for b in pkt[:pkt[0]+1])}")
 
         self.hid_device.write([self.REPORT_ID_OUT] + pkt)
-        time.sleep(0.05)
+        time.sleep(self.CMD_DELAY)
 
         if drain:
             self._drain_responses()
@@ -235,9 +242,9 @@ class QudelixHandler(DeviceHandler):
         for _ in range(20):
             if not self.hid_device.read(64):
                 break
-            time.sleep(0.01)
+            time.sleep(self.POLL_INTERVAL)
 
-    def _collect_chunks(self, group_id: int, timeout: float = 2.0) -> bytearray:
+    def _collect_chunks(self, group_id: int, timeout: float = CHUNK_TIMEOUT) -> bytearray:
         """Collect chunked preset response."""
         chunks = {}
         self.hid_device.set_nonblocking(True)
@@ -246,7 +253,7 @@ class QudelixHandler(DeviceHandler):
         while (time.time() - start) < timeout:
             raw = self.hid_device.read(64)
             if not raw:
-                time.sleep(0.01)
+                time.sleep(self.POLL_INTERVAL)
                 continue
 
             # Skip report ID
