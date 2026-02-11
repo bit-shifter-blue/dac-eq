@@ -526,22 +526,28 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
 
     elif name == "set_preset_name":
-        error_msg = (
-            "❌ PRESET NAMING DISABLED - Protocol Issue\n\n"
-            "Preset naming is currently disabled due to a protocol bug that corrupted "
-            "the SPK preset list on previous attempts.\n\n"
-            "Issues:\n"
-            "- Missing group parameter in protocol\n"
-            "- Payload format incomplete\n"
-            "- May write beyond preset boundaries\n\n"
-            "Status: Requires reverse-engineering and verification\n"
-            "Workaround: Use preset indices (0-58) directly instead of names\n\n"
-            "See: QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md"
-        )
-        return [TextContent(type="text", text=json.dumps({
-            "error": "Preset naming not implemented",
-            "reason": error_msg
-        }))]
+        preset_index = arguments.get("preset_index")
+        name = arguments.get("name")
+
+        if preset_index is None:
+            return [TextContent(type="text", text=json.dumps({"error": "preset_index is required"}))]
+        if name is None:
+            return [TextContent(type="text", text=json.dumps({"error": "name is required"}))]
+
+        handler, device = get_handler_and_device()
+        if not handler or not device:
+            return [TextContent(type="text", text=json.dumps({"error": "Device not connected"}))]
+
+        try:
+            handler.set_preset_name(preset_index, name)
+            return [TextContent(type="text", text=json.dumps({
+                "status": "success",
+                "preset_index": preset_index,
+                "name": name,
+                "message": f"Set name for preset {preset_index}"
+            }))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
 
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 

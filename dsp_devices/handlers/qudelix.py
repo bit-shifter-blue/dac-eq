@@ -362,7 +362,7 @@ class QudelixHandler(DeviceHandler):
 
             # Extract name length and name bytes
             name_length = data[4]
-            name_bytes = data[5:5 + name_length]
+            name_bytes = bytes(data[5:5 + name_length])
             name = name_bytes.decode('utf-8', errors='replace')
 
             if self.debug:
