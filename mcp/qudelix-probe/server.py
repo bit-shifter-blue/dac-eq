@@ -513,22 +513,17 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
 
     elif name == "get_preset_name":
-        error_msg = (
-            "❌ PRESET NAMING DISABLED - Protocol Issue\n\n"
-            "Preset naming is currently disabled due to a protocol bug that corrupted "
-            "the SPK preset list on previous attempts.\n\n"
-            "Issues:\n"
-            "- get_preset_name returns corrupted data\n"
-            "- set_preset_name may corrupt device preset tables\n"
-            "- Command codes may be incorrect\n\n"
-            "Status: Requires reverse-engineering and verification\n"
-            "Workaround: Use preset indices (0-58) directly instead of names\n\n"
-            "See: QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md"
-        )
-        return [TextContent(type="text", text=json.dumps({
-            "error": "Preset naming not implemented",
-            "reason": error_msg
-        }))]
+        handler, dev_info = get_handler_and_device()
+        if not handler:
+            return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
+
+        preset_index = arguments.get("preset_index")
+        try:
+            name = handler.get_preset_name(preset_index)
+            result = {"status": "success", "preset": preset_index, "name": name}
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
 
     elif name == "set_preset_name":
         error_msg = (

@@ -306,43 +306,106 @@ class QudelixHandler(DeviceHandler):
         self._send_cmd(self.CMD_SET_EQ_MODE, [mode_map[mode]])
         time.sleep(self.SETTLE_DELAY)
 
-    def get_preset_name(self, preset_index: int, group: str = "USR") -> str:
-        """Get preset name from device.
+    def get_preset_name(self, preset_index: int) -> str:
+        """Get custom preset name from device.
 
         Args:
-            preset_index: Preset slot (0-58)
-            group: EQ group ("USR", "SPK", or "B20")
+            preset_index: Custom preset slot (22-41 only)
 
         Returns:
             Preset name string (may be empty for unnamed presets)
 
         Raises:
-            NotImplementedError: Preset naming requires protocol verification
+            ValueError: If preset_index is not in custom range
+            DeviceNotConnectedError: If device not connected
+            DeviceCommunicationError: If no response received
         """
-        raise NotImplementedError(
-            "Preset naming is not fully implemented. The protocol returns corrupted data "
-            "and requires reverse-engineering. See QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md "
-            "for details."
-        )
+        if not self.hid_device:
+            raise DeviceNotConnectedError("Device not connected")
 
-    def set_preset_name(self, preset_index: int, name: str, group: str = "USR") -> None:
+        if not (self.PRESET_CUSTOM_START <= preset_index <= self.PRESET_CUSTOM_END):
+            raise ValueError(
+                f"Can only get names for custom presets ({self.PRESET_CUSTOM_START}-{self.PRESET_CUSTOM_END}), "
+                f"got {preset_index}"
+            )
+
+        self._ensure_init()
+
+        if self.debug:
+            print(f"  Requesting name for preset {preset_index}")
+
+        # Request preset name using custom index (0-19)
+        custom_index = preset_index - self.PRESET_CUSTOM_START
+        self._send_cmd(self.CMD_REQ_EQ_PRESET_NAME, [custom_index], drain=False)
+        time.sleep(self.SETTLE_DELAY)
+
+        # Read response
+        self.hid_device.set_nonblocking(True)
+        start = time.time()
+        while (time.time() - start) < 1.0:  # 1s timeout
+            raw = self.hid_device.read(64)
+            if not raw:
+                time.sleep(self.POLL_INTERVAL)
+                continue
+
+            data = raw[1:] if raw[0] == self.REPORT_ID_IN else raw
+            if len(data) < 4:
+                continue
+
+            cmd = (data[1] << 8) | data[2]
+            if cmd != self.CMD_RSP_EQ_PRESET_NAME:
+                continue
+
+            # Response format: [length][cmd_hi][cmd_lo][custom_idx][name_length][name_bytes...]
+            if data[3] != custom_index:
+                continue
+
+            # Extract name length and name bytes
+            name_length = data[4]
+            name_bytes = data[5:5 + name_length]
+            name = name_bytes.decode('utf-8', errors='replace')
+
+            if self.debug:
+                print(f"  Preset {preset_index} name: '{name}'")
+
+            return name
+
+        raise DeviceCommunicationError(f"No preset name response for index {preset_index}")
+
+    def set_preset_name(self, preset_index: int, name: str) -> None:
         """Set custom preset name on device.
 
         Args:
             preset_index: Custom preset slot (22-41 only)
             name: Preset name (max length ~20 chars, will be truncated)
-            group: EQ group ("USR", "SPK", or "B20")
 
         Raises:
             ValueError: If preset_index is not in custom range
             DeviceNotConnectedError: If device not connected
-            NotImplementedError: Preset naming requires protocol verification
         """
-        raise NotImplementedError(
-            "Preset naming is not fully implemented. The protocol requires verification - "
-            "previous attempts corrupted preset name tables. Use preset indices directly. "
-            "See QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md for details."
-        )
+        if not self.hid_device:
+            raise DeviceNotConnectedError("Device not connected")
+
+        if not (self.PRESET_CUSTOM_START <= preset_index <= self.PRESET_CUSTOM_END):
+            raise ValueError(
+                f"Can only set names for custom presets ({self.PRESET_CUSTOM_START}-{self.PRESET_CUSTOM_END}), "
+                f"got {preset_index}"
+            )
+
+        self._ensure_init()
+
+        # Truncate name to fit in packet (max ~20 chars to be safe)
+        name_bytes = name.encode('utf-8')[:20]
+
+        if self.debug:
+            print(f"  Setting name for preset {preset_index}: '{name}'")
+
+        # Payload: [custom_index (0-19), name_length, name_bytes...]
+        # Preset 22-41 maps to custom index 0-19
+        custom_index = preset_index - self.PRESET_CUSTOM_START
+        payload = [custom_index, len(name_bytes)] + list(name_bytes)
+        self._send_cmd(self.CMD_SET_EQ_PRESET_NAME, payload)
+        time.sleep(self.SETTLE_DELAY)
 
     # --- Private helpers ---
 

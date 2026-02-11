@@ -524,21 +524,24 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return _with_device(device_id, _set_mode)
 
     elif name == "get_preset_name":
-        error_msg = (
-            "❌ PRESET NAMING DISABLED\n\n"
-            "Preset naming is currently disabled due to protocol issues that corrupted "
-            "device preset tables.\n\n"
-            "Issues:\n"
-            "- get_preset_name returns corrupted data\n"
-            "- set_preset_name corrupts SPK preset list\n"
-            "- Protocol requires verification\n\n"
-            "Workaround: Use preset indices (0-58) directly\n"
-            "See: QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md"
-        )
-        return [TextContent(
-            type="text",
-            text=json.dumps({"error": "Not implemented", "reason": error_msg}, indent=2)
-        )]
+        device_id = arguments.get("device_id")
+        preset_index = arguments.get("preset_index")
+
+        if preset_index is None:
+            return [TextContent(type="text", text="Error: preset_index is required")]
+
+        def _get_name(handler, device_info):
+            if handler.name != "Qudelix":
+                raise ValueError("Preset management only supported on Qudelix devices")
+
+            name = handler.get_preset_name(preset_index=preset_index)
+            return {
+                "device": device_info['product_string'],
+                "preset_index": preset_index,
+                "name": name or "(unnamed)"
+            }
+
+        return _with_device(device_id, _get_name)
 
     elif name == "set_preset_name":
         error_msg = (
