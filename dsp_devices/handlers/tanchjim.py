@@ -27,18 +27,18 @@ class TanchjimHandler(DeviceHandler):
     VENDOR_ID = 0x31B2
     REPORT_ID = 0x4B
 
-    # Protocol commands (from DSPCommand.java)
+    # Commands
     COMMAND_READ = 0x52
     COMMAND_WRITE = 0x57
     COMMAND_COMMIT = 0x53
 
-    # Field IDs (from DSPCommand.java)
-    FIELD_PREGAIN = 0x65  # CMD_GET_DIGITAL_ADC / cmdADCWriteHeader
-    FIELD_FILTER_BASE = 0x26  # commandFreqAndGain1 / modeDataInit[0]
+    # Field IDs
+    FIELD_PREGAIN = 0x65
+    FIELD_FILTER_BASE = 0x26  # Gain/freq for filter 0, increments by 2
 
-    # Filter type encoding (from DSPCommand.java decodeEQCommand)
-    FILTER_TYPE_MAP = {"PK": 0x00, "LSQ": 0x03, "HSQ": 0x04}
-    FILTER_TYPE_REVERSE = {0x00: "PK", 0x03: "LSQ", 0x04: "HSQ"}
+    # Filter types
+    FILTER_TYPE_MAP = {"PK": 0, "LSQ": 3, "HSQ": 4}
+    FILTER_TYPE_REVERSE = {0: "PK", 3: "LSQ", 4: "HSQ"}
 
     # Timing constants
     WRITE_DELAY = 0.02  # 20ms between write commands
@@ -99,12 +99,8 @@ class TanchjimHandler(DeviceHandler):
             self.hid_device.close()
             self.hid_device = None
 
-    # ========================================================================
-    # Low-level HID communication
-    # ========================================================================
-
     def _send_and_receive(self, packet: bytes, timeout_ms: int = READ_TIMEOUT_MS) -> Optional[bytes]:
-        """Send HID packet and receive response (for READ commands)"""
+        """Send HID packet and receive response"""
         if not self.hid_device:
             raise DeviceNotConnectedError("Device not connected")
 
@@ -112,279 +108,188 @@ class TanchjimHandler(DeviceHandler):
         resp = self.hid_device.read(64, timeout_ms)
 
         if self.debug and resp:
-            print(f"  → {' '.join(f'{b:02X}' for b in packet[:11])}")
-            print(f"  ← {' '.join(f'{b:02X}' for b in resp[:11])}")
+            print(f"  DEBUG sent: {' '.join(f'{b:02X}' for b in packet[:12])}")
+            print(f"  DEBUG recv: {' '.join(f'{b:02X}' for b in resp[:16])}")
 
         return bytes(resp) if resp else None
 
-    def _send_command(self, packet: bytes) -> None:
-        """Send HID packet without response (for WRITE/COMMIT commands)"""
-        if not self.hid_device:
-            raise DeviceNotConnectedError("Device not connected")
-
-        self.hid_device.write([self.REPORT_ID] + list(packet))
-        time.sleep(self.WRITE_DELAY)
-
-        if self.debug:
-            print(f"  → {' '.join(f'{b:02X}' for b in packet[:11])}")
-
-    # ========================================================================
-    # Packet builders (from DSPCommand.java)
-    # ========================================================================
-
     def _build_read_packet(self, field_id: int) -> bytes:
-        """Build READ packet: [FieldID, 0, 0, 0, 0x52, 0, 0, 0, 0]"""
-        return bytes([field_id, 0x00, 0x00, 0x00, self.COMMAND_READ, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        """Build READ packet for a field"""
+        return bytes([field_id, 0x00, 0x00, 0x00, self.COMMAND_READ, 0x00, 0x00, 0x00, 0x00])
 
-    def _build_write_gain_freq(self, field_id: int, freq: int, gain: float) -> bytes:
-        """Build WRITE packet for filter gain/frequency
-
-        Encoding (from getTypeCQGain):
-        - Gain: signed 16-bit, ×10 scaling, little-endian
-        - Freq: unsigned 16-bit, little-endian
-        """
-        # Gain encoding: multiply by 10, handle negative with two's complement
+    def _build_write_gain_freq(self, filter_id: int, freq: int, gain: float) -> bytes:
+        """Build packet for gain/frequency write"""
+        # Gain: signed 16-bit, scaled by 10
         gain_raw = int(gain * 10)
         if gain_raw < 0:
             gain_raw += 0x10000
 
-        # Frequency (no 2x compensation for Fission per official code)
+        # Freq: unsigned 16-bit (no 2x compensation for Fission)
         freq_raw = int(freq)
 
         return bytes([
-            field_id, 0x00, 0x00, 0x00, self.COMMAND_WRITE, 0x00,
-            gain_raw & 0xFF,
-            (gain_raw >> 8) & 0xFF,
-            freq_raw & 0xFF,
-            (freq_raw >> 8) & 0xFF,
-            0x00
+            filter_id, 0x00, 0x00, 0x00, self.COMMAND_WRITE, 0x00,
+            gain_raw & 0xFF, (gain_raw >> 8) & 0xFF,
+            freq_raw & 0xFF, (freq_raw >> 8) & 0xFF
         ])
 
-    def _build_write_q(self, field_id: int, q: float, filter_type: str) -> bytes:
-        """Build WRITE packet for filter Q factor and type
-
-        Encoding (from getTypeCQGain):
-        - Q: unsigned 16-bit, ×1000 scaling, little-endian
-        - Type: single byte (0x00=PK, 0x03=LSQ, 0x04=HSQ)
-        """
+    def _build_write_q(self, filter_id: int, q: float, filter_type: str) -> bytes:
+        """Build packet for Q value write"""
         q_raw = int(q * 1000)
-        type_byte = self.FILTER_TYPE_MAP.get(filter_type, 0x00)
+        type_byte = self.FILTER_TYPE_MAP.get(filter_type, 0)
 
         return bytes([
-            field_id, 0x00, 0x00, 0x00, self.COMMAND_WRITE, 0x00,
-            q_raw & 0xFF,
-            (q_raw >> 8) & 0xFF,
-            type_byte,
-            0x00,
-            0x00
+            filter_id, 0x00, 0x00, 0x00, self.COMMAND_WRITE, 0x00,
+            q_raw & 0xFF, (q_raw >> 8) & 0xFF,
+            type_byte, 0x00
         ])
 
     def _build_write_pregain(self, value: float) -> bytes:
-        """Build WRITE packet for pregain
-
-        Encoding (from saveADCCommand):
-        - Signed 8-bit, ×2 scaling
-        - If negative: (value * 2) + 256
-        - If positive: value * 2
-        """
+        """Build packet to write pregain"""
         val = int(round(value * 2))
         if val < 0:
             val = (val + 256) & 0xFF
-
-        return bytes([
-            self.FIELD_PREGAIN, 0x00, 0x00, 0x00, self.COMMAND_WRITE, 0x00,
-            val, 0x00, 0x00, 0x00, 0x00
-        ])
+        return bytes([self.FIELD_PREGAIN, 0x00, 0x00, 0x00, self.COMMAND_WRITE, 0x00, val, 0x00, 0x00, 0x00])
 
     def _build_commit(self) -> bytes:
-        """Build COMMIT packet (CMD_SAVE_REG)"""
-        return bytes([0x00, 0x00, 0x00, 0x00, self.COMMAND_COMMIT, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
-
-    # ========================================================================
-    # Response decoders (from DSPCommand.java decodeEQCommand)
-    # ========================================================================
+        """Build commit packet"""
+        return bytes([0x00, 0x00, 0x00, 0x00, self.COMMAND_COMMIT, 0x00, 0x00, 0x00, 0x00, 0x00])
 
     def _decode_gain_freq(self, data: bytes) -> tuple:
-        """Decode gain and frequency from READ response
-
-        Response format: [ReportID, FieldID, 0, 0, 0, Cmd, 0, GainLo, GainHi, FreqLo, FreqHi, ...]
-        """
-        # Gain: signed 16-bit, ×10 scaling
+        """Decode gain and frequency from response"""
+        # Note: hidapi includes report ID as byte 0, so all indices are +1 from WebHID
+        # Bytes: [ReportID, FieldID, 0, 0, 0, Cmd, 0, GainLo, GainHi, FreqLo, FreqHi]
         gain_raw = data[7] | (data[8] << 8)
         if gain_raw > 0x7FFF:
             gain_raw -= 0x10000
         gain = gain_raw / 10.0
 
-        # Frequency: unsigned 16-bit
         freq = data[9] | (data[10] << 8)
 
         return gain, freq
 
     def _decode_q(self, data: bytes) -> tuple:
-        """Decode Q factor and filter type from READ response
-
-        Response format: [ReportID, FieldID, 0, 0, 0, Cmd, 0, QLo, QHi, Type, ...]
-        """
-        # Q: unsigned 16-bit, ×1000 scaling
+        """Decode Q and filter type from response"""
+        # Bytes: [ReportID, FieldID, 0, 0, 0, Cmd, 0, QLo, QHi, FilterType, 0]
         q = (data[7] | (data[8] << 8)) / 1000.0
-
-        # Filter type
         filter_type = self.FILTER_TYPE_REVERSE.get(data[9], "PK")
 
         return q, filter_type
 
     def _decode_pregain(self, data: bytes) -> float:
-        """Decode pregain from READ response
-
-        Decoding (from decodeDigitalAdc):
-        - If raw > 128: (raw - 256) / 2
-        - Else: raw / 2
-        """
+        """Decode pregain from response"""
         val = data[7]
         if val > 128:
             return float((val - 256) / 2.0)
         else:
             return float(val / 2.0)
 
-    # ========================================================================
-    # Filter read/write helpers
-    # ========================================================================
-
     def _read_filter(self, index: int) -> Optional[FilterDefinition]:
-        """Read a single filter (index 0-4)
-
-        Each filter uses 2 field IDs:
-        - Even field (0x26, 0x28, ...): Gain/Freq
-        - Odd field (0x27, 0x29, ...): Q/Type
-        """
-        gain_freq_id = self.FIELD_FILTER_BASE + (index * 2)
+        """Read a single filter (0-4)"""
+        gain_freq_id = self.FIELD_FILTER_BASE + index * 2
         q_id = gain_freq_id + 1
 
-        # Read gain/frequency
+        # Read gain/freq
         resp = self._send_and_receive(self._build_read_packet(gain_freq_id))
         if not resp:
             return None
         gain, freq = self._decode_gain_freq(resp)
 
-        # Read Q/type
+        # Read Q
         resp = self._send_and_receive(self._build_read_packet(q_id))
         if not resp:
             return None
         q, filter_type = self._decode_q(resp)
 
-        # Skip bypassed filters (freq=0 or q=0 indicates disabled)
-        if freq == 0 or q == 0.0:
-            return None
-
         return FilterDefinition(freq=freq, gain=gain, q=q, type=filter_type)
 
     def _write_filter(self, index: int, filter_def: FilterDefinition) -> None:
-        """Write a single filter (index 0-4)"""
-        gain_freq_id = self.FIELD_FILTER_BASE + (index * 2)
+        """Write a single filter"""
+        gain_freq_id = self.FIELD_FILTER_BASE + index * 2
         q_id = gain_freq_id + 1
 
-        # Write gain/frequency
-        self._send_command(
-            self._build_write_gain_freq(gain_freq_id, filter_def.freq, filter_def.gain)
+        # Write gain/freq
+        self.hid_device.write(
+            [self.REPORT_ID] + list(self._build_write_gain_freq(gain_freq_id, filter_def.freq, filter_def.gain))
         )
+        time.sleep(self.WRITE_DELAY)
 
-        # Write Q/type
-        self._send_command(
-            self._build_write_q(q_id, filter_def.q, filter_def.type)
+        # Write Q
+        self.hid_device.write(
+            [self.REPORT_ID] + list(self._build_write_q(q_id, filter_def.q, filter_def.type))
         )
+        time.sleep(self.WRITE_DELAY)
 
-    # ========================================================================
-    # Public API
-    # ========================================================================
+    def _write_pregain(self, value: float) -> None:
+        """Write pregain value"""
+        self.hid_device.write([self.REPORT_ID] + list(self._build_write_pregain(value)))
+        time.sleep(self.WRITE_DELAY)
+
+    def _commit(self) -> None:
+        """Save changes to device"""
+        self.hid_device.write([self.REPORT_ID] + list(self._build_commit()))
+        time.sleep(self.COMMIT_DELAY)
 
     def read_peq(self) -> PEQProfile:
-        """Read current PEQ settings from device
-
-        Returns:
-            PEQProfile with current filters and pregain
-
-        Raises:
-            DeviceNotConnectedError: If device not connected
-        """
+        """Read current PEQ settings from device"""
         if not self.hid_device:
             raise DeviceNotConnectedError("Device not connected")
 
-        # Read all 5 filters
         filters = []
         for i in range(self.capabilities.max_filters):
             f = self._read_filter(i)
             if f:
                 filters.append(f)
 
-        # Read pregain
-        resp = self._send_and_receive(self._build_read_packet(self.FIELD_PREGAIN))
-        pregain = self._decode_pregain(resp) if resp else 0.0
-
-        if self.debug:
-            print(f"  Read {len(filters)} active filters, pregain={pregain} dB")
+        pregain = self._read_pregain()
 
         return PEQProfile(filters=filters, pregain=pregain)
 
+    def _read_pregain(self) -> float:
+        """Read current pregain value"""
+        resp = self._send_and_receive(
+            bytes([self.FIELD_PREGAIN, 0x00, 0x00, 0x00, self.COMMAND_READ, 0x00, 0x00, 0x00, 0x00])
+        )
+        if resp:
+            val = resp[7]
+            return float(val - 256 if val > 127 else val) / 2.0
+        return 0.0
+
     def write_peq(self, profile: PEQProfile) -> None:
-        """Write PEQ settings to device
-
-        Args:
-            profile: PEQ profile with filters and pregain
-
-        Raises:
-            DeviceNotConnectedError: If device not connected
-            ProfileValidationError: If profile validation fails
-        """
+        """Write PEQ settings to device"""
         if not self.hid_device:
             raise DeviceNotConnectedError("Device not connected")
 
-        # Validate profile
+        # Validate profile first
         self.validate_profile(profile)
 
-        # Write all filters
+        # Write filters
         for i, f in enumerate(profile.filters):
             self._write_filter(i, f)
             if self.debug:
                 print(f"  Filter {i+1}: {f.freq} Hz, {f.gain:+.1f} dB, Q={f.q:.2f}, {f.type}")
 
-        # Clear remaining filter slots
-        for i in range(len(profile.filters), self.capabilities.max_filters):
-            # Write zero freq/Q to disable
-            self._send_command(self._build_write_gain_freq(self.FIELD_FILTER_BASE + i * 2, 0, 0.0))
-            self._send_command(self._build_write_q(self.FIELD_FILTER_BASE + i * 2 + 1, 0.0, "PK"))
-
         # Write pregain
-        self._send_command(self._build_write_pregain(profile.pregain))
+        self._write_pregain(profile.pregain)
         if self.debug:
             print(f"  Pregain: {profile.pregain} dB")
 
-        # Commit to flash
-        if self.debug:
-            print("  Committing to flash...")
-        self.hid_device.write([self.REPORT_ID] + list(self._build_commit()))
-        time.sleep(self.COMMIT_DELAY)
+        # Commit changes
+        self._commit()
 
         if self.debug:
-            print("  ✓ Changes saved to device")
+            print("  Changes saved to device!")
 
     def set_pregain(self, pregain: float) -> None:
-        """Set pregain only (without modifying filters)
-
-        Args:
-            pregain: Pregain value in dB
-
-        Raises:
-            DeviceNotConnectedError: If device not connected
-        """
+        """Set pregain only (without modifying filters)"""
         if not self.hid_device:
             raise DeviceNotConnectedError("Device not connected")
 
         # Write pregain
-        self._send_command(self._build_write_pregain(pregain))
+        self._write_pregain(pregain)
 
         # Commit
-        self.hid_device.write([self.REPORT_ID] + list(self._build_commit()))
-        time.sleep(self.COMMIT_DELAY)
+        self._commit()
 
         if self.debug:
-            print(f"  ✓ Pregain set to {pregain} dB")
+            print(f"  Pregain set to {pregain} dB")
