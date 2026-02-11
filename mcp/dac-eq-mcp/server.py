@@ -168,6 +168,111 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": []
             }
+        ),
+        Tool(
+            name="load_preset",
+            description="Load preset from Qudelix device storage. Only available for Qudelix devices.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "device_id": {
+                        "type": "integer",
+                        "description": "Optional device ID (0-based index). If not specified, auto-selects if only one device connected."
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (USR, SPK, or B20)",
+                        "enum": ["USR", "SPK", "B20"]
+                    },
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Preset slot (0=Flat, 1-21=Factory, 22-41=Custom, 42-52=QxOver for SPK)"
+                    }
+                },
+                "required": ["preset_index"]
+            }
+        ),
+        Tool(
+            name="save_preset",
+            description="Save current EQ settings to Qudelix device preset slot. Only available for Qudelix devices.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "device_id": {
+                        "type": "integer",
+                        "description": "Optional device ID (0-based index). If not specified, auto-selects if only one device connected."
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (USR, SPK, or B20)",
+                        "enum": ["USR", "SPK", "B20"]
+                    },
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Custom preset slot (22-41 only, factory presets are read-only)"
+                    }
+                },
+                "required": ["preset_index"]
+            }
+        ),
+        Tool(
+            name="set_eq_mode",
+            description="Switch Qudelix EQ mode (determines which groups are active). Only available for Qudelix devices.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "device_id": {
+                        "type": "integer",
+                        "description": "Optional device ID (0-based index). If not specified, auto-selects if only one device connected."
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": "Either 'usr_spk' (USR+SPK active) or 'b20' (B20 active)",
+                        "enum": ["usr_spk", "b20"]
+                    }
+                },
+                "required": ["mode"]
+            }
+        ),
+        Tool(
+            name="get_preset_name",
+            description="Get preset name from Qudelix device. Only available for Qudelix devices.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "device_id": {
+                        "type": "integer",
+                        "description": "Optional device ID (0-based index). If not specified, auto-selects if only one device connected."
+                    },
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Preset slot (0-58)"
+                    }
+                },
+                "required": ["preset_index"]
+            }
+        ),
+        Tool(
+            name="set_preset_name",
+            description="Set custom preset name on Qudelix device. Only available for Qudelix devices.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "device_id": {
+                        "type": "integer",
+                        "description": "Optional device ID (0-based index). If not specified, auto-selects if only one device connected."
+                    },
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Custom preset slot (22-41 only)"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Preset name (max ~20 chars)"
+                    }
+                },
+                "required": ["preset_index", "name"]
+            }
         )
     ]
 
@@ -350,6 +455,107 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 return {"error": "Handler does not support diagnose()"}
 
         return _with_device(device_id, _diagnose, debug=True)
+
+    elif name == "load_preset":
+        device_id = arguments.get("device_id")
+        group = arguments.get("group", "USR")
+        preset_index = arguments.get("preset_index")
+
+        if preset_index is None:
+            return [TextContent(type="text", text="Error: preset_index is required")]
+
+        def _load(handler, device_info):
+            if handler.name != "Qudelix":
+                raise ValueError("Preset management only supported on Qudelix devices")
+
+            handler.load_preset(group=group, preset_index=preset_index)
+            return {
+                "status": "success",
+                "device": device_info['product_string'],
+                "group": group,
+                "preset_index": preset_index,
+                "message": f"Loaded preset {preset_index} for {group} group"
+            }
+
+        return _with_device(device_id, _load)
+
+    elif name == "save_preset":
+        device_id = arguments.get("device_id")
+        group = arguments.get("group", "USR")
+        preset_index = arguments.get("preset_index")
+
+        if preset_index is None:
+            return [TextContent(type="text", text="Error: preset_index is required")]
+
+        def _save(handler, device_info):
+            if handler.name != "Qudelix":
+                raise ValueError("Preset management only supported on Qudelix devices")
+
+            handler.save_preset(group=group, preset_index=preset_index)
+            return {
+                "status": "success",
+                "device": device_info['product_string'],
+                "group": group,
+                "preset_index": preset_index,
+                "message": f"Saved to preset {preset_index} for {group} group"
+            }
+
+        return _with_device(device_id, _save)
+
+    elif name == "set_eq_mode":
+        device_id = arguments.get("device_id")
+        mode = arguments.get("mode")
+
+        if not mode:
+            return [TextContent(type="text", text="Error: mode is required (usr_spk or b20)")]
+
+        def _set_mode(handler, device_info):
+            if handler.name != "Qudelix":
+                raise ValueError("EQ mode switching only supported on Qudelix devices")
+
+            handler.set_eq_mode(mode=mode)
+            return {
+                "status": "success",
+                "device": device_info['product_string'],
+                "mode": mode,
+                "message": f"Set EQ mode to {mode}"
+            }
+
+        return _with_device(device_id, _set_mode)
+
+    elif name == "get_preset_name":
+        error_msg = (
+            "❌ PRESET NAMING DISABLED\n\n"
+            "Preset naming is currently disabled due to protocol issues that corrupted "
+            "device preset tables.\n\n"
+            "Issues:\n"
+            "- get_preset_name returns corrupted data\n"
+            "- set_preset_name corrupts SPK preset list\n"
+            "- Protocol requires verification\n\n"
+            "Workaround: Use preset indices (0-58) directly\n"
+            "See: QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md"
+        )
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": "Not implemented", "reason": error_msg}, indent=2)
+        )]
+
+    elif name == "set_preset_name":
+        error_msg = (
+            "❌ PRESET NAMING DISABLED\n\n"
+            "Preset naming is currently disabled due to protocol issues that corrupted "
+            "device preset tables.\n\n"
+            "What happened:\n"
+            "- set_preset_name command corrupted SPK preset list\n"
+            "- Missing group parameter in protocol\n"
+            "- Payload format incomplete\n\n"
+            "Workaround: Use preset indices (0-58) directly\n"
+            "See: QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md"
+        )
+        return [TextContent(
+            type="text",
+            text=json.dumps({"error": "Not implemented", "reason": error_msg}, indent=2)
+        )]
 
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]

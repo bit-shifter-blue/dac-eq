@@ -252,6 +252,11 @@ mcp__dac_eq__write_peq(
 - `read_peq(device_id?)` - Read current settings (if supported)
 - `write_peq(filters, pregain?, device_id?)` - Write EQ to device
 - `set_pregain(pregain, device_id?)` - Set pregain only
+- `load_preset(preset_index, group?, device_id?)` - Load preset from Qudelix device storage *(Qudelix only)*
+- `save_preset(preset_index, group?, device_id?)` - Save current EQ to Qudelix preset slot *(Qudelix only)*
+- `set_eq_mode(mode, device_id?)` - Switch Qudelix EQ mode (usr_spk/b20) *(Qudelix only)*
+- `get_preset_name(preset_index, device_id?)` - Get Qudelix preset name *(Qudelix only)*
+- `set_preset_name(preset_index, name, device_id?)` - Set Qudelix preset name *(Qudelix only)*
 
 **Auto-selection:** If only one device is connected, `device_id` parameter is optional.
 
@@ -288,6 +293,59 @@ The Qudelix 5K has three independent EQ groups:
 
 The handler defaults to USR EQ. Protocol uses V3 format (Q×1024, group-based commands).
 Band params are bit-packed as 32-bit LE: `[rsv:4][Q:14][gain:10][filter:4]`
+
+### Qudelix Preset Management
+
+The Qudelix 5K has **on-device preset storage** with 20 custom slots per EQ group:
+
+**Preset Index Ranges:**
+- `0` - Flat (default)
+- `1-21` - Factory presets (Acoustic, Bass Booster, Classical, etc.)
+- `22-41` - Custom user presets (editable, 20 slots per group)
+- `42-52` - QxOver target curves (Harman IE 2019, Diffuse Field, etc.) - SPK group only
+- `53-58` - T71 device-specific presets
+
+**Handler Methods:**
+```python
+# Load preset from device storage
+handler.load_preset(group="USR", preset_index=22)
+
+# Save current settings to preset slot
+handler.save_preset(group="USR", preset_index=22)
+
+# Switch EQ mode
+handler.set_eq_mode(mode="usr_spk")  # or "b20"
+
+# Preset naming
+name = handler.get_preset_name(preset_index=22)
+handler.set_preset_name(preset_index=22, name="Bass Boost")
+```
+
+**MCP Tools:**
+```python
+# Load/save presets
+mcp__dac_eq__load_preset(group="USR", preset_index=22)
+mcp__dac_eq__save_preset(group="USR", preset_index=22)
+
+# Mode switching
+mcp__dac_eq__set_eq_mode(mode="usr_spk")
+
+# Preset naming
+mcp__dac_eq__get_preset_name(preset_index=22)
+mcp__dac_eq__set_preset_name(preset_index=22, name="My EQ")
+```
+
+**EQ Modes:**
+- `usr_spk`: USR and SPK groups active simultaneously
+- `b20`: B20 group active (20-band or 10×2 stereo)
+
+**Typical Workflow:**
+1. Write EQ profile using `write_peq()`
+2. Save to device slot using `save_preset(group, slot)`
+3. Optionally set a name using `set_preset_name(slot, name)`
+4. Later, load from slot using `load_preset(group, slot)`
+
+**Note:** Direct `read_peq()`/`write_peq()` remain the primary interface for consistency with other handlers. Preset operations are optional advanced features.
 
 ### Moondrop DSP Notes
 

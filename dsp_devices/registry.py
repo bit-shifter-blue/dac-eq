@@ -20,13 +20,11 @@ class DeviceRegistry:
         # Import handlers here to avoid circular imports
         from .handlers.tanchjim import TanchjimHandler
         from .handlers.qudelix import QudelixHandler
-        from .handlers.moondrop import MoondropHandler
 
         # Create handler instances
         self.handlers: List[DeviceHandler] = [
             TanchjimHandler(),
             QudelixHandler(),
-            MoondropHandler(),
         ]
 
         # Set debug flag on all handlers

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Qudelix Probe - Debug tool for testing individual HID commands
-Temporary scaffolding - delete when debugging complete
+Qudelix Probe - Debug tool for testing Qudelix handler functionality
+Tests both low-level HID commands and high-level handler methods
 """
 import json
 import sys
@@ -9,10 +9,18 @@ import os
 import hid
 import time
 from typing import Any, Optional
+from pathlib import Path
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
+
+# Add parent directory to path to import dsp_devices
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from dsp_devices.registry import DeviceRegistry
+from dsp_devices.handlers.qudelix import QudelixHandler
+from dsp_devices.base import DeviceNotConnectedError, DeviceCommunicationError
 
 server = Server("qudelix-probe")
 
@@ -21,9 +29,11 @@ VENDOR_ID = 0x0A12
 USAGE_PAGE = 0xFF00
 REPORT_ID = 8
 
-# Persistent device connection
+# Persistent device connections
 _device: Optional[hid.device] = None
 _device_info: Optional[dict] = None
+_handler: Optional[QudelixHandler] = None
+_hid_device: Optional[hid.device] = None
 
 def find_qudelix() -> Optional[dict]:
     """Find Qudelix device"""
@@ -34,6 +44,40 @@ def find_qudelix() -> Optional[dict]:
                 if dev.get('usage_page') == USAGE_PAGE:
                     return dev
     return None
+
+
+def get_handler_and_device() -> tuple[Optional[QudelixHandler], Optional[dict]]:
+    """Get or create handler and device connection"""
+    global _handler, _hid_device
+
+    dev_info = find_qudelix()
+    if not dev_info:
+        return None, None
+
+    # Create handler if needed
+    if _handler is None:
+        _handler = QudelixHandler(debug=True)
+
+    # Connect if needed
+    if _hid_device is None:
+        try:
+            _hid_device = _handler.connect(dev_info)
+        except Exception as e:
+            return None, {"error": str(e)}
+
+    return _handler, dev_info
+
+
+def cleanup_handler():
+    """Close handler connection"""
+    global _handler, _hid_device
+    if _handler and _hid_device:
+        try:
+            _handler.disconnect()
+        except Exception:
+            pass
+    _handler = None
+    _hid_device = None
 
 def send_command(cmd: int, payload: list, report_id: int = REPORT_ID) -> dict:
     """Send a single command and capture response"""
@@ -123,6 +167,7 @@ def send_command(cmd: int, payload: list, report_id: int = REPORT_ID) -> dict:
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [
+        # Low-level HID probing tools
         Tool(
             name="probe_send",
             description="Send a single HID command to Qudelix. Use to test what each command does.",
@@ -181,6 +226,140 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["commands"]
             }
+        ),
+        # High-level handler tools for testing preset management
+        Tool(
+            name="write_peq",
+            description="Write EQ profile to device",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "filters": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "freq": {"type": "integer"},
+                                "gain": {"type": "number"},
+                                "q": {"type": "number"},
+                                "type": {"type": "string", "enum": ["PK", "LSQ", "HSQ", "LPF", "HPF"]}
+                            },
+                            "required": ["freq", "gain", "q", "type"]
+                        },
+                        "description": "Array of filter objects"
+                    },
+                    "pregain": {
+                        "type": "number",
+                        "description": "Pregain in dB (default: 0)"
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (default: USR)",
+                        "enum": ["USR", "SPK", "B20"]
+                    }
+                },
+                "required": ["filters"]
+            }
+        ),
+        Tool(
+            name="read_peq",
+            description="Read current EQ profile from device",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (default: USR)",
+                        "enum": ["USR", "SPK", "B20"]
+                    }
+                },
+                "required": []
+            }
+        ),
+        Tool(
+            name="set_eq_mode",
+            description="Switch EQ mode between usr_spk (user + speaker) and b20 (20-band)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "mode": {
+                        "type": "string",
+                        "description": "EQ mode: 'usr_spk' or 'b20'",
+                        "enum": ["usr_spk", "b20"]
+                    }
+                },
+                "required": ["mode"]
+            }
+        ),
+        Tool(
+            name="load_preset",
+            description="Load preset from device storage",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Preset slot (0=Flat, 1-21=Factory, 22-41=Custom, 42-52=QxOver)"
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (default: USR)",
+                        "enum": ["USR", "SPK", "B20"]
+                    }
+                },
+                "required": ["preset_index"]
+            }
+        ),
+        Tool(
+            name="save_preset",
+            description="Save current EQ settings to a custom preset slot",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Custom preset slot (22-41 only)"
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (default: USR)",
+                        "enum": ["USR", "SPK", "B20"]
+                    }
+                },
+                "required": ["preset_index"]
+            }
+        ),
+        Tool(
+            name="get_preset_name",
+            description="Read preset name from device",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Preset slot (0-52)"
+                    }
+                },
+                "required": ["preset_index"]
+            }
+        ),
+        Tool(
+            name="set_preset_name",
+            description="Set custom preset name on device",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "preset_index": {
+                        "type": "integer",
+                        "description": "Custom preset slot (22-41 only)"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Preset name (max ~20 characters)"
+                    }
+                },
+                "required": ["preset_index", "name"]
+            }
         )
     ]
 
@@ -230,6 +409,145 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         return [TextContent(type="text", text=json.dumps(results, indent=2))]
 
+    # High-level handler tools
+    elif name == "write_peq":
+        handler, dev_info = get_handler_and_device()
+        if not handler:
+            return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
+
+        filters_data = arguments.get("filters", [])
+        pregain = arguments.get("pregain", 0)
+        group = arguments.get("group", "USR")
+
+        try:
+            # Convert filter dicts to FilterDefinition objects
+            from dsp_devices.base import FilterDefinition, PEQProfile
+            filters = [
+                FilterDefinition(
+                    freq=f["freq"],
+                    gain=f["gain"],
+                    q=f["q"],
+                    type=f["type"]
+                )
+                for f in filters_data
+            ]
+            profile = PEQProfile(filters=filters, pregain=pregain)
+
+            handler.write_peq(profile, group=group)
+            result = {
+                "status": "success",
+                "group": group,
+                "filters_written": len(filters),
+                "pregain": pregain,
+                "message": f"Wrote {len(filters)} filters to {group} group"
+            }
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+    elif name == "read_peq":
+        handler, dev_info = get_handler_and_device()
+        if not handler:
+            return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
+
+        group = arguments.get("group", "USR")
+        try:
+            profile = handler.read_peq(group=group)
+            result = {
+                "status": "success",
+                "group": group,
+                "pregain": profile.pregain,
+                "filters": [
+                    {
+                        "freq": f.freq,
+                        "gain": f.gain,
+                        "q": f.q,
+                        "type": f.type
+                    }
+                    for f in profile.filters
+                ]
+            }
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+    elif name == "set_eq_mode":
+        handler, dev_info = get_handler_and_device()
+        if not handler:
+            return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
+
+        mode = arguments.get("mode")
+        try:
+            handler.set_eq_mode(mode)
+            result = {"status": "success", "mode": mode, "message": f"Switched to {mode} mode"}
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+    elif name == "load_preset":
+        handler, dev_info = get_handler_and_device()
+        if not handler:
+            return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
+
+        preset_index = arguments.get("preset_index")
+        group = arguments.get("group", "USR")
+        try:
+            handler.load_preset(group=group, preset_index=preset_index)
+            result = {"status": "success", "preset": preset_index, "group": group, "message": f"Loaded preset {preset_index} from {group} group"}
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+    elif name == "save_preset":
+        handler, dev_info = get_handler_and_device()
+        if not handler:
+            return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
+
+        preset_index = arguments.get("preset_index")
+        group = arguments.get("group", "USR")
+        try:
+            handler.save_preset(group=group, preset_index=preset_index)
+            result = {"status": "success", "preset": preset_index, "group": group, "message": f"Saved current EQ to preset {preset_index} in {group} group"}
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+    elif name == "get_preset_name":
+        error_msg = (
+            "❌ PRESET NAMING DISABLED - Protocol Issue\n\n"
+            "Preset naming is currently disabled due to a protocol bug that corrupted "
+            "the SPK preset list on previous attempts.\n\n"
+            "Issues:\n"
+            "- get_preset_name returns corrupted data\n"
+            "- set_preset_name may corrupt device preset tables\n"
+            "- Command codes may be incorrect\n\n"
+            "Status: Requires reverse-engineering and verification\n"
+            "Workaround: Use preset indices (0-58) directly instead of names\n\n"
+            "See: QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md"
+        )
+        return [TextContent(type="text", text=json.dumps({
+            "error": "Preset naming not implemented",
+            "reason": error_msg
+        }))]
+
+    elif name == "set_preset_name":
+        error_msg = (
+            "❌ PRESET NAMING DISABLED - Protocol Issue\n\n"
+            "Preset naming is currently disabled due to a protocol bug that corrupted "
+            "the SPK preset list on previous attempts.\n\n"
+            "Issues:\n"
+            "- Missing group parameter in protocol\n"
+            "- Payload format incomplete\n"
+            "- May write beyond preset boundaries\n\n"
+            "Status: Requires reverse-engineering and verification\n"
+            "Workaround: Use preset indices (0-58) directly instead of names\n\n"
+            "See: QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md"
+        )
+        return [TextContent(type="text", text=json.dumps({
+            "error": "Preset naming not implemented",
+            "reason": error_msg
+        }))]
+
     return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
 
@@ -243,7 +561,8 @@ async def main():
                 server.create_initialization_options()
             )
     finally:
-        # Cleanup: close persistent device on exit
+        # Cleanup: close persistent devices on exit
+        cleanup_handler()
         if _device:
             try:
                 _device.close()

@@ -1,6 +1,9 @@
 """Qudelix 5K DSP device handler - V3 Protocol
 
 Supports reading and writing PEQ to USR, SPK, and B20 EQ groups.
+Also supports preset management (load/save to device storage), EQ mode switching,
+and preset naming for advanced workflows.
+
 Protocol reverse-engineered from official Qudelix Chrome extension v3.2.3.0.
 """
 
@@ -35,6 +38,12 @@ class QudelixHandler(DeviceHandler):
     CMD_SET_EQ_BAND_PARAM = 0x070F
     CMD_REQ_EQ_PRESET = 0x0123
     CMD_RSP_EQ_PRESET = 0x0128
+    CMD_SAVE_EQ_PRESET = 0x0708      # Save to preset slot
+    CMD_LOAD_EQ_PRESET = 0x0709      # Load from preset slot
+    CMD_SET_EQ_PRESET_NAME = 0x070A  # Set custom preset name
+    CMD_REQ_EQ_PRESET_NAME = 0x070B  # Request preset name
+    CMD_RSP_EQ_PRESET_NAME = 0x070C  # Preset name response
+    CMD_SET_EQ_MODE = 0x070E         # Switch EQ mode (usr_spk/b20)
 
     # EQ Groups: (group_id, max_bands, channel_mask)
     EQ_GROUPS = {
@@ -42,6 +51,19 @@ class QudelixHandler(DeviceHandler):
         "SPK": (1, 10, 0x03),  # Speaker EQ, 10 bands, stereo
         "B20": (2, 20, 0x03),  # 20-band EQ
     }
+
+    # Preset indices
+    PRESET_FLAT = 0
+    PRESET_FACTORY_START = 1
+    PRESET_FACTORY_END = 21
+    PRESET_CUSTOM_START = 22
+    PRESET_CUSTOM_END = 41
+    PRESET_QXOVER_START = 42  # SPK group only
+    PRESET_QXOVER_END = 52
+
+    # EQ Modes
+    EQ_MODE_USR_SPK = 0  # USR + SPK groups active
+    EQ_MODE_B20 = 1      # B20 group active
 
     # V3 filter types
     FILTER_BYPASS = 0
@@ -61,8 +83,9 @@ class QudelixHandler(DeviceHandler):
     POLL_INTERVAL = 0.01   # 10ms polling interval when draining/collecting
     CHUNK_TIMEOUT = 2.0    # 2s timeout for collecting chunked responses
 
-    def __init__(self):
+    def __init__(self, debug: bool = False):
         super().__init__()
+        self.debug = debug
         self.hid_device: Optional[hid.device] = None
         self._is_open = False
         self._initialized = False
@@ -188,6 +211,138 @@ class QudelixHandler(DeviceHandler):
             self._send_cmd(self.CMD_SET_EQ_BAND_PARAM, [group_id, chan_mask, i, 0, 0, 0, 0, 0, 0, 0])
 
         time.sleep(self.SETTLE_DELAY)
+
+    def load_preset(self, group: str = "USR", preset_index: int = 0) -> None:
+        """Load preset from device storage.
+
+        Args:
+            group: EQ group ("USR", "SPK", or "B20")
+            preset_index: Preset slot (0=Flat, 1-21=Factory, 22-41=Custom, 42-52=QxOver)
+
+        Raises:
+            ValueError: If preset_index is out of range
+            DeviceNotConnectedError: If device not connected
+        """
+        if not self.hid_device:
+            raise DeviceNotConnectedError("Device not connected")
+
+        group_id, _, _ = self._get_group(group)
+
+        # Validate preset index
+        if not (0 <= preset_index <= 58):  # T71 has up to 58
+            raise ValueError(f"Preset index must be 0-58, got {preset_index}")
+
+        if group == "SPK" and 42 <= preset_index <= 52:
+            # QxOver presets valid for SPK only
+            pass
+        elif preset_index > 41:
+            raise ValueError(f"Preset {preset_index} not valid for group {group}")
+
+        self._ensure_init()
+
+        if self.debug:
+            print(f"  Loading preset {preset_index} for {group} group")
+
+        self._send_cmd(self.CMD_LOAD_EQ_PRESET, [group_id, preset_index])
+        time.sleep(self.SETTLE_DELAY)
+
+    def save_preset(self, group: str = "USR", preset_index: int = 22) -> None:
+        """Save current EQ settings to device preset slot.
+
+        Args:
+            group: EQ group ("USR", "SPK", or "B20")
+            preset_index: Custom preset slot (22-41 only, factory presets are read-only)
+
+        Raises:
+            ValueError: If preset_index is not in custom range (22-41)
+            DeviceNotConnectedError: If device not connected
+        """
+        if not self.hid_device:
+            raise DeviceNotConnectedError("Device not connected")
+
+        group_id, _, _ = self._get_group(group)
+
+        # Only allow saving to custom preset slots
+        if not (self.PRESET_CUSTOM_START <= preset_index <= self.PRESET_CUSTOM_END):
+            raise ValueError(
+                f"Can only save to custom presets ({self.PRESET_CUSTOM_START}-{self.PRESET_CUSTOM_END}), "
+                f"got {preset_index}"
+            )
+
+        self._ensure_init()
+
+        if self.debug:
+            print(f"  Saving to preset {preset_index} for {group} group")
+
+        self._send_cmd(self.CMD_SAVE_EQ_PRESET, [group_id, preset_index])
+        time.sleep(self.SETTLE_DELAY)
+
+    def set_eq_mode(self, mode: str) -> None:
+        """Switch EQ mode (determines which groups are active).
+
+        Args:
+            mode: Either "usr_spk" (USR+SPK active) or "b20" (B20 active)
+
+        Raises:
+            ValueError: If mode is invalid
+            DeviceNotConnectedError: If device not connected
+        """
+        if not self.hid_device:
+            raise DeviceNotConnectedError("Device not connected")
+
+        mode_map = {
+            "usr_spk": self.EQ_MODE_USR_SPK,
+            "b20": self.EQ_MODE_B20
+        }
+
+        if mode not in mode_map:
+            raise ValueError(f"Invalid mode '{mode}'. Valid: usr_spk, b20")
+
+        self._ensure_init()
+
+        if self.debug:
+            print(f"  Setting EQ mode to {mode}")
+
+        self._send_cmd(self.CMD_SET_EQ_MODE, [mode_map[mode]])
+        time.sleep(self.SETTLE_DELAY)
+
+    def get_preset_name(self, preset_index: int, group: str = "USR") -> str:
+        """Get preset name from device.
+
+        Args:
+            preset_index: Preset slot (0-58)
+            group: EQ group ("USR", "SPK", or "B20")
+
+        Returns:
+            Preset name string (may be empty for unnamed presets)
+
+        Raises:
+            NotImplementedError: Preset naming requires protocol verification
+        """
+        raise NotImplementedError(
+            "Preset naming is not fully implemented. The protocol returns corrupted data "
+            "and requires reverse-engineering. See QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md "
+            "for details."
+        )
+
+    def set_preset_name(self, preset_index: int, name: str, group: str = "USR") -> None:
+        """Set custom preset name on device.
+
+        Args:
+            preset_index: Custom preset slot (22-41 only)
+            name: Preset name (max length ~20 chars, will be truncated)
+            group: EQ group ("USR", "SPK", or "B20")
+
+        Raises:
+            ValueError: If preset_index is not in custom range
+            DeviceNotConnectedError: If device not connected
+            NotImplementedError: Preset naming requires protocol verification
+        """
+        raise NotImplementedError(
+            "Preset naming is not fully implemented. The protocol requires verification - "
+            "previous attempts corrupted preset name tables. Use preset indices directly. "
+            "See QUDELIX_PRESET_MANAGEMENT_TEST_RESULTS.md for details."
+        )
 
     # --- Private helpers ---
 
