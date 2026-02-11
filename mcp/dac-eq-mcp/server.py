@@ -2,7 +2,7 @@
 """
 DAC-EQ MCP Server: Universal DSP/DAC Parametric EQ Control
 
-Supports multiple devices: Tanchjim, Qudelix, and more
+Supports multiple devices: Tanchjim, Qudelix, Moondrop, and more
 Exposes PEQ control functionality as MCP tools using stdio transport.
 Part of the DAC-EQ project.
 """
@@ -70,7 +70,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="list_devices",
-            description="List all connected DSP devices (Tanchjim, Qudelix, etc.) with their capabilities",
+            description="List all connected DSP devices (Tanchjim, Qudelix, Moondrop, etc.) with their capabilities",
             inputSchema={
                 "type": "object",
                 "properties": {},
@@ -93,7 +93,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="read_peq",
-            description="Read current PEQ settings (pregain and filters) from a DSP device.",
+            description="Read current PEQ settings (pregain and filters) from a DSP device",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -257,6 +257,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         def _read(handler, device_info):
             profile = handler.read_peq()
+
             return {
                 "device": device_info['product_string'],
                 "handler": handler.name,
@@ -317,13 +318,17 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [TextContent(type="text", text="Error: pregain value required")]
 
         def _set_pregain(handler, device_info):
-            try:
-                profile = handler.read_peq()
-                profile.pregain = pregain
-            except (NotImplementedError, Exception):
-                profile = PEQProfile(filters=[], pregain=pregain)
+            # Use set_pregain if available (Tanchjim), otherwise read+write
+            if hasattr(handler, 'set_pregain'):
+                handler.set_pregain(pregain)
+            else:
+                try:
+                    profile = handler.read_peq()
+                    profile.pregain = pregain
+                except (NotImplementedError, Exception):
+                    profile = PEQProfile(filters=[], pregain=pregain)
+                handler.write_peq(profile)
 
-            handler.write_peq(profile)
             return {
                 "device": device_info['product_string'],
                 "handler": handler.name,
