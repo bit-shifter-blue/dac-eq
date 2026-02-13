@@ -294,20 +294,31 @@ The Qudelix 5K has three independent EQ groups:
 The handler defaults to USR EQ. Protocol uses V3 format (Q×1024, group-based commands).
 Band params are bit-packed as 32-bit LE: `[rsv:4][Q:14][gain:10][filter:4]`
 
-**Data Structure Differences:**
+**Data Structure Differences (Verified Feb 13, 2026):**
 - **USR/SPK**: Header(4) + Pregain(4) + FreqL(2×bands) + FreqR(2×bands) + Params(4×bands)
-- **B20**: Header(4) + Pregain(4) + Freq(2×bands) + Params(4×bands) - no FreqR, more compact
+  - **88 bytes total**: Header(4) + Pregain(4) + FreqL(20) + FreqR(20) + Params(40)
+  - **IMPORTANT**: Only ONE Params array exists (applies to FreqL only)
+  - FreqR in USR is **UNUSED** - contains fixed template frequencies `[31, 63, 125, 250, 500, 1k, 2k, 4k, 8k, 16k]`
+  - FreqR in SPK is **USED** for independent R channel EQ when L/R split is active
+- **B20**: Header(4) + Pregain(4) + Freq(2×bands) + Params(4×bands)
+  - **128 bytes total**: Header(4) + Pregain(4) + Freq(40) + Params(80)
+  - No FreqR array - pure mono, more compact structure
 
-**IMPORTANT LIMITATION - Stereo Channel Handling:**
+**IMPORTANT LIMITATION - Stereo Channel Handling (Verified Feb 13, 2026):**
 
 For SPK group (stereo with L/R selector), the handler has the following limitations:
 
 - **Write:** Always writes identical filters to both L and R channels (`chan_mask=0x03`)
-- **Read:** Only reads left channel frequencies, assumes R channel is identical
+- **Read:** Only reads left channel frequencies (FreqL), ignores right channel (FreqR)
 - **Impact:** Independent L/R channel EQ is NOT supported
   - If you manually set different L/R frequencies in the official Qudelix app, only the LEFT channel will be visible when reading
   - Writing with this handler will OVERWRITE any custom R channel settings with values identical to L channel
-- **Why:** The handler assumes stereo means "same filter on both channels" to simplify the implementation
+- **Why:** The handler assumes stereo means "same filter on both channels" to simplify implementation and maintain consistency with USR (mono) mode
+
+**Note on FreqR arrays:**
+- **USR**: FreqR is completely unused (architectural baggage from shared SPK structure)
+- **SPK**: FreqR *could theoretically* store independent R channel data, but handler treats both channels as linked
+- **B20**: No FreqR array (pure mono, compact structure)
 
 If you need independent L/R EQ, use the official Qudelix app. This handler is designed for mono and "linked stereo" EQ workflows.
 

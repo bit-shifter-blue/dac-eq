@@ -536,9 +536,13 @@ class QudelixHandler(DeviceHandler):
 
         Data structures vary by group:
         - USR/SPK: Header(4) + Pregain(4) + FreqL(2×bands) + FreqR(2×bands) + Params(4×bands)
-        - B20: Header(4) + Pregain(4) + Freq(2×bands) + Params(4×bands)  [no FreqR, more compact]
+          - USR: FreqR is unused (contains template frequencies, no associated gain data)
+          - SPK: FreqR could theoretically store independent R channel, but handler treats channels as linked
+        - B20: Header(4) + Pregain(4) + Freq(2×bands) + Params(4×bands)  [no FreqR, pure mono]
 
         Band param: [rsv:4][q:14][gain:10][filter:4] as 32-bit LE
+
+        Note: Only ONE Params array exists for USR/SPK (applies to FreqL only).
         """
         if len(data) < 8:
             raise DeviceCommunicationError(f"Preset data too short: {len(data)} bytes")
@@ -551,7 +555,7 @@ class QudelixHandler(DeviceHandler):
         freqs = [self._read_u16(data, offset + i*2) for i in range(max_bands)]
         offset += max_bands * 2
 
-        # Skip R frequencies for USR/SPK (they have redundant/stereo FreqR data)
+        # Skip R frequencies for USR/SPK (they have unused template frequencies, no gain data)
         # B20 has no FreqR array - it's pure mono, more compact structure
         if group in ("USR", "SPK"):
             offset += max_bands * 2
