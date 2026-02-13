@@ -338,6 +338,11 @@ async def list_tools() -> list[Tool]:
                     "preset_index": {
                         "type": "integer",
                         "description": "Preset slot (0-52)"
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (default: USR)",
+                        "enum": ["USR", "SPK", "B20"]
                     }
                 },
                 "required": ["preset_index"]
@@ -356,6 +361,11 @@ async def list_tools() -> list[Tool]:
                     "name": {
                         "type": "string",
                         "description": "Preset name (max ~20 characters)"
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (default: USR)",
+                        "enum": ["USR", "SPK", "B20"]
                     }
                 },
                 "required": ["preset_index", "name"]
@@ -518,9 +528,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
 
         preset_index = arguments.get("preset_index")
+        group = arguments.get("group", "USR")
         try:
-            name = handler.get_preset_name(preset_index)
-            result = {"status": "success", "preset": preset_index, "name": name}
+            name = handler.get_preset_name(preset_index, group=group)
+            result = {"status": "success", "preset": preset_index, "group": group, "name": name}
             return [TextContent(type="text", text=json.dumps(result, indent=2))]
         except Exception as e:
             return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
@@ -528,6 +539,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     elif name == "set_preset_name":
         preset_index = arguments.get("preset_index")
         name = arguments.get("name")
+        group = arguments.get("group", "USR")
 
         if preset_index is None:
             return [TextContent(type="text", text=json.dumps({"error": "preset_index is required"}))]
@@ -539,12 +551,13 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps({"error": "Device not connected"}))]
 
         try:
-            handler.set_preset_name(preset_index, name)
+            handler.set_preset_name(preset_index, name, group=group)
             return [TextContent(type="text", text=json.dumps({
                 "status": "success",
                 "preset_index": preset_index,
+                "group": group,
                 "name": name,
-                "message": f"Set name for preset {preset_index}"
+                "message": f"Set name for preset {preset_index} in {group} group"
             }))]
         except Exception as e:
             return [TextContent(type="text", text=json.dumps({"error": str(e)}))]

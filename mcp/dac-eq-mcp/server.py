@@ -247,6 +247,11 @@ async def list_tools() -> list[Tool]:
                     "preset_index": {
                         "type": "integer",
                         "description": "Preset slot (0-58)"
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (USR, SPK, or B20). Defaults to USR.",
+                        "enum": ["USR", "SPK", "B20"]
                     }
                 },
                 "required": ["preset_index"]
@@ -269,6 +274,11 @@ async def list_tools() -> list[Tool]:
                     "name": {
                         "type": "string",
                         "description": "Preset name (max ~20 chars)"
+                    },
+                    "group": {
+                        "type": "string",
+                        "description": "EQ group (USR, SPK, or B20). Defaults to USR.",
+                        "enum": ["USR", "SPK", "B20"]
                     }
                 },
                 "required": ["preset_index", "name"]
@@ -526,6 +536,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     elif name == "get_preset_name":
         device_id = arguments.get("device_id")
         preset_index = arguments.get("preset_index")
+        group = arguments.get("group", "USR")
 
         if preset_index is None:
             return [TextContent(type="text", text="Error: preset_index is required")]
@@ -534,10 +545,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             if handler.name != "Qudelix":
                 raise ValueError("Preset management only supported on Qudelix devices")
 
-            name = handler.get_preset_name(preset_index=preset_index)
+            name = handler.get_preset_name(preset_index=preset_index, group=group)
             return {
                 "device": device_info['product_string'],
                 "preset_index": preset_index,
+                "group": group,
                 "name": name or "(unnamed)"
             }
 
@@ -547,6 +559,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         device_id = arguments.get("device_id")
         preset_index = arguments.get("preset_index")
         name = arguments.get("name")
+        group = arguments.get("group", "USR")
 
         if preset_index is None:
             return [TextContent(type="text", text="Error: preset_index is required")]
@@ -557,10 +570,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             if handler.name != "Qudelix":
                 raise ValueError("Preset management only supported on Qudelix devices")
 
-            handler.set_preset_name(preset_index=preset_index, name=name)
+            handler.set_preset_name(preset_index=preset_index, name=name, group=group)
             return {
                 "device": device_info['product_string'],
                 "preset_index": preset_index,
+                "group": group,
                 "name": name,
                 "status": "success"
             }
