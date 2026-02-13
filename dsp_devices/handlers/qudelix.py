@@ -48,8 +48,8 @@ class QudelixHandler(DeviceHandler):
     # EQ Groups: (group_id, max_bands, channel_mask)
     EQ_GROUPS = {
         "USR": (0, 10, 0x01),  # User EQ, 10 bands, mono
-        "SPK": (1, 10, 0x03),  # Speaker EQ, 10 bands, stereo
-        "B20": (2, 20, 0x03),  # 20-band EQ
+        "SPK": (1, 10, 0x03),  # Speaker EQ, 10 bands, stereo (Both/L/R selector)
+        "B20": (2, 20, 0x01),  # 20-band EQ, mono (higher resolution, no L/R split)
     }
 
     # Preset indices
@@ -159,7 +159,13 @@ class QudelixHandler(DeviceHandler):
         return True
 
     def read_peq(self, group: str = "USR") -> PEQProfile:
-        """Read current PEQ settings from device."""
+        """Read current PEQ settings from device.
+
+        LIMITATION: For stereo groups (SPK, B20), this only reads the LEFT channel
+        frequencies and assumes R channel is identical. If you manually set different
+        L/R frequencies in the official Qudelix app, only the left channel will be
+        read. Independent L/R channel EQ is not currently supported.
+        """
         if not self.hid_device:
             raise DeviceNotConnectedError("Device not connected")
 
@@ -178,7 +184,13 @@ class QudelixHandler(DeviceHandler):
         return self._parse_preset(preset_data, group, max_bands)
 
     def write_peq(self, profile: PEQProfile, group: str = "USR") -> None:
-        """Write PEQ settings to device."""
+        """Write PEQ settings to device.
+
+        LIMITATION: For stereo groups (SPK, B20), this writes identical filters to
+        both L and R channels (chan_mask=0x03). Independent L/R channel EQ is not
+        currently supported. If you have custom L/R settings, they will be overwritten
+        with identical values on both channels.
+        """
         if not self.hid_device:
             raise DeviceNotConnectedError("Device not connected")
 
@@ -522,7 +534,10 @@ class QudelixHandler(DeviceHandler):
     def _parse_preset(self, data: bytearray, group: str, max_bands: int) -> PEQProfile:
         """Parse preset data into PEQProfile.
 
-        Structure: Header(4) + Pregain(4) + FreqL(2×bands) + FreqR(2×bands) + Params(4×bands)
+        Data structures vary by group:
+        - USR/SPK: Header(4) + Pregain(4) + FreqL(2×bands) + FreqR(2×bands) + Params(4×bands)
+        - B20: Header(4) + Pregain(4) + Freq(2×bands) + Params(4×bands)  [no FreqR, more compact]
+
         Band param: [rsv:4][q:14][gain:10][filter:4] as 32-bit LE
         """
         if len(data) < 8:
@@ -536,7 +551,8 @@ class QudelixHandler(DeviceHandler):
         freqs = [self._read_u16(data, offset + i*2) for i in range(max_bands)]
         offset += max_bands * 2
 
-        # Skip R frequencies for USR/SPK
+        # Skip R frequencies for USR/SPK (they have redundant/stereo FreqR data)
+        # B20 has no FreqR array - it's pure mono, more compact structure
         if group in ("USR", "SPK"):
             offset += max_bands * 2
 

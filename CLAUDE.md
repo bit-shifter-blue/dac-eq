@@ -287,12 +287,29 @@ mcp__dac_eq__write_peq(
 ### Qudelix 5K Notes
 
 The Qudelix 5K has three independent EQ groups:
-- **USR** (default): 10 bands, mono - user preference EQ
-- **SPK**: 10 bands, stereo - speaker/IEM correction
-- **B20**: 20 bands - extended parametric EQ
+- **USR** (default): 10 bands, mono (chan_mask=0x01) - user preference EQ
+- **SPK**: 10 bands, stereo (chan_mask=0x03) - speaker/IEM correction, has Both/L/R selector
+- **B20**: 20 bands, mono (chan_mask=0x01) - extended parametric EQ, higher resolution, no L/R split
 
 The handler defaults to USR EQ. Protocol uses V3 format (Q×1024, group-based commands).
 Band params are bit-packed as 32-bit LE: `[rsv:4][Q:14][gain:10][filter:4]`
+
+**Data Structure Differences:**
+- **USR/SPK**: Header(4) + Pregain(4) + FreqL(2×bands) + FreqR(2×bands) + Params(4×bands)
+- **B20**: Header(4) + Pregain(4) + Freq(2×bands) + Params(4×bands) - no FreqR, more compact
+
+**IMPORTANT LIMITATION - Stereo Channel Handling:**
+
+For SPK group (stereo with L/R selector), the handler has the following limitations:
+
+- **Write:** Always writes identical filters to both L and R channels (`chan_mask=0x03`)
+- **Read:** Only reads left channel frequencies, assumes R channel is identical
+- **Impact:** Independent L/R channel EQ is NOT supported
+  - If you manually set different L/R frequencies in the official Qudelix app, only the LEFT channel will be visible when reading
+  - Writing with this handler will OVERWRITE any custom R channel settings with values identical to L channel
+- **Why:** The handler assumes stereo means "same filter on both channels" to simplify the implementation
+
+If you need independent L/R EQ, use the official Qudelix app. This handler is designed for mono and "linked stereo" EQ workflows.
 
 ### Qudelix Preset Management
 
