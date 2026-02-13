@@ -316,9 +316,9 @@ handler.save_preset(group="USR", preset_index=22)
 # Switch EQ mode
 handler.set_eq_mode(mode="usr_spk")  # or "b20"
 
-# Preset naming
-name = handler.get_preset_name(preset_index=22)
-handler.set_preset_name(preset_index=22, name="Bass Boost")
+# Preset naming (✅ Working as of v2.1)
+name = handler.get_preset_name(preset_index=22, group="USR")
+handler.set_preset_name(preset_index=22, name="Bass Boost", group="USR")
 ```
 
 **MCP Tools:**
@@ -330,22 +330,46 @@ mcp__dac_eq__save_preset(group="USR", preset_index=22)
 # Mode switching
 mcp__dac_eq__set_eq_mode(mode="usr_spk")
 
-# Preset naming
-mcp__dac_eq__get_preset_name(preset_index=22)
-mcp__dac_eq__set_preset_name(preset_index=22, name="My EQ")
+# Preset naming (✅ Working as of v2.1)
+mcp__dac_eq__get_preset_name(preset_index=22)  # Returns preset name string
+mcp__dac_eq__set_preset_name(preset_index=22, name="My EQ")  # Sets custom name
 ```
 
 **EQ Modes:**
 - `usr_spk`: USR and SPK groups active simultaneously
 - `b20`: B20 group active (20-band or 10×2 stereo)
 
-**Typical Workflow:**
-1. Write EQ profile using `write_peq()`
-2. Save to device slot using `save_preset(group, slot)`
-3. Optionally set a name using `set_preset_name(slot, name)`
-4. Later, load from slot using `load_preset(group, slot)`
+**Complete Workflow Example:**
+```python
+# 1. Write EQ to device
+mcp__dac_eq__write_peq(
+    filters=[
+        {"freq": 100, "gain": 3.0, "q": 1.0, "type": "LSQ"},
+        {"freq": 8000, "gain": -2.0, "q": 2.0, "type": "PK"}
+    ],
+    pregain=-2.0
+)
 
-**Note:** Direct `read_peq()`/`write_peq()` remain the primary interface for consistency with other handlers. Preset operations are optional advanced features.
+# 2. Save to custom preset slot 22 (first custom slot)
+mcp__dac_eq__save_preset(group="USR", preset_index=22)
+
+# 3. Set a friendly name for the preset
+mcp__dac_eq__set_preset_name(preset_index=22, name="Bass Boost")
+
+# 4. Later, load the preset by index
+mcp__dac_eq__load_preset(group="USR", preset_index=22)
+
+# 5. Verify the name persisted
+name = mcp__dac_eq__get_preset_name(preset_index=22)
+# Returns: "Bass Boost"
+```
+
+**Important Notes:**
+- Preset names persist across power cycles
+- Empty names show as "Custom #N" in official Qudelix app
+- Each EQ group (USR, SPK, B20) has independent preset names
+- Direct `read_peq()`/`write_peq()` remain the primary interface for consistency with other handlers
+- Preset operations are optional advanced features
 
 ### Moondrop DSP Notes
 

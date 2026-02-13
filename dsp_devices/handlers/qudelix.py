@@ -306,11 +306,12 @@ class QudelixHandler(DeviceHandler):
         self._send_cmd(self.CMD_SET_EQ_MODE, [mode_map[mode]])
         time.sleep(self.SETTLE_DELAY)
 
-    def get_preset_name(self, preset_index: int) -> str:
+    def get_preset_name(self, preset_index: int, group: str = "USR") -> str:
         """Get custom preset name from device.
 
         Args:
             preset_index: Custom preset slot (22-41 only)
+            group: EQ group ("USR", "SPK", or "B20")
 
         Returns:
             Preset name string (may be empty for unnamed presets)
@@ -331,12 +332,15 @@ class QudelixHandler(DeviceHandler):
 
         self._ensure_init()
 
+        group_id, _, _ = self._get_group(group)
+
         if self.debug:
             print(f"  Requesting name for preset {preset_index}")
 
         # Request preset name using custom index (0-19)
+        # V3 protocol: [group, custom_index]
         custom_index = preset_index - self.PRESET_CUSTOM_START
-        self._send_cmd(self.CMD_REQ_EQ_PRESET_NAME, [custom_index], drain=False)
+        self._send_cmd(self.CMD_REQ_EQ_PRESET_NAME, [group_id, custom_index], drain=False)
         time.sleep(self.SETTLE_DELAY)
 
         # Read response
@@ -356,13 +360,20 @@ class QudelixHandler(DeviceHandler):
             if cmd != self.CMD_RSP_EQ_PRESET_NAME:
                 continue
 
-            # Response format: [length][cmd_hi][cmd_lo][custom_idx][name_length][name_bytes...]
-            if data[3] != custom_index:
+            # V3 Response format: [length][cmd_hi][cmd_lo][group][custom_idx][name_length][name_bytes...]
+            if len(data) < 6:
+                continue
+
+            resp_group = data[3]
+            resp_custom_idx = data[4]
+
+            # Verify this response is for our request
+            if resp_group != group_id or resp_custom_idx != custom_index:
                 continue
 
             # Extract name length and name bytes
-            name_length = data[4]
-            name_bytes = bytes(data[5:5 + name_length])
+            name_length = data[5]
+            name_bytes = bytes(data[6:6 + name_length])
             name = name_bytes.decode('utf-8', errors='replace')
 
             if self.debug:
@@ -372,12 +383,13 @@ class QudelixHandler(DeviceHandler):
 
         raise DeviceCommunicationError(f"No preset name response for index {preset_index}")
 
-    def set_preset_name(self, preset_index: int, name: str) -> None:
+    def set_preset_name(self, preset_index: int, name: str, group: str = "USR") -> None:
         """Set custom preset name on device.
 
         Args:
             preset_index: Custom preset slot (22-41 only)
             name: Preset name (max length ~20 chars, will be truncated)
+            group: EQ group ("USR", "SPK", or "B20")
 
         Raises:
             ValueError: If preset_index is not in custom range
@@ -394,16 +406,18 @@ class QudelixHandler(DeviceHandler):
 
         self._ensure_init()
 
+        group_id, _, _ = self._get_group(group)
+
         # Truncate name to fit in packet (max ~20 chars to be safe)
         name_bytes = name.encode('utf-8')[:20]
 
         if self.debug:
             print(f"  Setting name for preset {preset_index}: '{name}'")
 
-        # Payload: [custom_index (0-19), name_length, name_bytes...]
+        # V3 protocol payload: [group, custom_index (0-19), name_length, name_bytes...]
         # Preset 22-41 maps to custom index 0-19
         custom_index = preset_index - self.PRESET_CUSTOM_START
-        payload = [custom_index, len(name_bytes)] + list(name_bytes)
+        payload = [group_id, custom_index, len(name_bytes)] + list(name_bytes)
         self._send_cmd(self.CMD_SET_EQ_PRESET_NAME, payload)
         time.sleep(self.SETTLE_DELAY)
 
