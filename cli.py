@@ -9,7 +9,7 @@ Requires: pip install hidapi
 import argparse
 import json
 import os
-from peq_devices import DeviceRegistry, PEQProfile, FilterDefinition, DeviceError, ProfileValidationError
+from tools.peq_devices import DeviceRegistry, PEQProfile, FilterDefinition, DeviceError, ProfileValidationError
 
 
 def parse_autoeq(filepath):
