@@ -37,7 +37,7 @@ All source code is open on GitHub at: https://github.com/bit-shifter-blue/eq-adv
 - All eq-advisor source code
 - Virtual environment (`venv/`)
 - MCP configuration (`.mcp.json`)
-- EQ profiles (`eq/` folder)
+- EQ profiles (`cache/peq/` folder)
 - Everything else in the eq-advisor directory
 
 **The uninstall script will:**
