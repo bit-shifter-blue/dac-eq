@@ -8,13 +8,13 @@ import os
 import tempfile
 import httpx
 
-# Import from local tools/ subdirectories
-from .peq_devices.registry import DeviceRegistry
-from .peq_devices.base import PEQProfile, FilterDefinition
+# Import from tools/ subdirectories (absolute imports for Streamlit compatibility)
+from tools.peq_devices.registry import DeviceRegistry
+from tools.peq_devices.base import PEQProfile, FilterDefinition
 
 # Import autoeq optimizer (optional - only if autoeq library is installed)
 try:
-    from .autoeq.optimizer import compute_peq as autoeq_compute_peq
+    from tools.autoeq.optimizer import compute_peq as autoeq_compute_peq
     AUTOEQ_AVAILABLE = True
 except ImportError:
     AUTOEQ_AVAILABLE = False
