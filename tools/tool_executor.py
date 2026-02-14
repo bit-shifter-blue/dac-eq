@@ -20,8 +20,11 @@ except ImportError:
     AUTOEQ_AVAILABLE = False
     print("Warning: autoeq library not available. PEQ computation will return stubs.")
 
-# Shared temp directory for FR data files
-TEMP_DIR = os.path.join(tempfile.gettempdir(), "eq-advisor")
+# Cache directories for persistent data
+CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache")
+FR_CACHE_DIR = os.path.join(CACHE_DIR, "fr")
+TARGET_CACHE_DIR = os.path.join(CACHE_DIR, "targets")
+PEQ_CACHE_DIR = os.path.join(CACHE_DIR, "peq")
 
 # Squiglink databases
 DATABASES = {
@@ -50,9 +53,20 @@ def _get_registry():
     return _device_registry
 
 
-def _ensure_temp_dir():
-    """Create temp directory if it doesn't exist."""
-    os.makedirs(TEMP_DIR, exist_ok=True)
+def _ensure_cache_dirs():
+    """Create cache directories if they don't exist."""
+    os.makedirs(FR_CACHE_DIR, exist_ok=True)
+    os.makedirs(TARGET_CACHE_DIR, exist_ok=True)
+    os.makedirs(PEQ_CACHE_DIR, exist_ok=True)
+
+
+def _normalize_name(name: str) -> str:
+    """Normalize IEM/target name for filesystem (lowercase, hyphens)."""
+    import re
+    # Convert to lowercase, replace spaces/special chars with hyphens
+    normalized = re.sub(r'[^a-z0-9]+', '-', name.lower())
+    # Remove leading/trailing hyphens
+    return normalized.strip('-')
 
 
 # ============================================================================
@@ -243,21 +257,51 @@ def _search_iems(query: str) -> dict:
         }
 
 
-def _get_fr_data(database: str, file: str) -> dict:
+def _get_fr_data(database: str, file: str, variant: str = "default") -> dict:
     """Fetch frequency response measurement data."""
     try:
-        _ensure_temp_dir()
+        _ensure_cache_dirs()
 
-        # Check if database exists
-        if database not in DATABASES:
+        # Normalize IEM name for cache path
+        iem_name = _normalize_name(file)
+        iem_cache_dir = os.path.join(FR_CACHE_DIR, iem_name)
+        fr_file = os.path.join(iem_cache_dir, f"{variant}.csv")
+
+        # Check if cached (always check cache first)
+        if os.path.exists(fr_file):
+            # Count lines to get data points
+            with open(fr_file, 'r') as f:
+                data_points = sum(1 for line in f if line.strip())
+
+            return {
+                "status": "success",
+                "message": f"Loaded {data_points} data points from cache for {file}",
+                "database": "cached",
+                "file": file,
+                "fr_file": fr_file,
+                "data_points": data_points,
+                "cached": True
+            }
+
+        # If database is "cached" but file doesn't exist, return error
+        if database == "cached":
             return {
                 "status": "error",
-                "message": f"Unknown database: {database}",
+                "message": f"No cached data found for {file} (variant: {variant})",
                 "database": database,
                 "file": file
             }
 
-        # Fetch FR data from squig.link
+        # Check if database exists for fetching
+        if database not in DATABASES:
+            return {
+                "status": "error",
+                "message": f"Unknown database: {database}. Available: {', '.join(DATABASES.keys())}",
+                "database": database,
+                "file": file
+            }
+
+        # Not cached - fetch from squig.link
         base_url = DATABASES[database]
         fr_data = _fetch_fr_data(database, base_url, file)
 
@@ -269,10 +313,11 @@ def _get_fr_data(database: str, file: str) -> dict:
                 "file": file
             }
 
-        # Save to temp file for autoeq to use
-        fr_file = os.path.join(TEMP_DIR, f"fr_{file}.json")
+        # Save to cache as CSV (tab-separated, squig.link format)
+        os.makedirs(iem_cache_dir, exist_ok=True)
         with open(fr_file, "w") as f:
-            json.dump(fr_data, f)
+            for point in fr_data:
+                f.write(f"{point['freq']}\t{point['db']}\n")
 
         return {
             "status": "success",
@@ -280,7 +325,8 @@ def _get_fr_data(database: str, file: str) -> dict:
             "database": database,
             "file": file,
             "fr_file": fr_file,
-            "data_points": len(fr_data)
+            "data_points": len(fr_data),
+            "cached": False
         }
 
     except Exception as e:
@@ -314,9 +360,37 @@ def _compute_peq(fr_file: str, target: str, constraints: dict = None) -> dict:
         }
 
     try:
-        # Load FR data from file
+        # Load FR data from CSV file (supports both tab and comma separated)
+        fr_data = []
         with open(fr_file, 'r') as f:
-            fr_data = json.load(f)
+            for line_num, line in enumerate(f):
+                line = line.strip()
+                if not line:
+                    continue
+
+                # Skip header line
+                if line_num == 0 and ('frequency' in line.lower() or 'freq' in line.lower()):
+                    continue
+
+                # Try tab-separated first, then comma-separated
+                parts = line.split('\t')
+                if len(parts) < 2:
+                    parts = line.split(',')
+
+                if len(parts) >= 2:
+                    try:
+                        freq = float(parts[0])
+                        db = float(parts[1])
+                        fr_data.append({"freq": freq, "db": db})
+                    except ValueError:
+                        continue
+
+        if not fr_data:
+            return {
+                "status": "error",
+                "message": f"No valid FR data found in {fr_file}",
+                "target": target
+            }
 
         # Use autoeq optimizer
         result = autoeq_compute_peq(fr_data, target, constraints)
