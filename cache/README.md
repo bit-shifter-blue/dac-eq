@@ -142,15 +142,13 @@ With metadata tracking:
 
 ## Migration Notes
 
-**From old structure:**
-- `tools/squiglink/frequency_responses/` → `cache/fr/`
-- `tools/autoeq/targets/` → `cache/targets/`
-- `eq/{device}/` → Partially migrated to `cache/peq/{device}/`
-
-**Manual migration needed:**
-- Old `eq/` profiles without clear IEM association need manual review
-- Assign each profile to appropriate `cache/peq/{device}/{iem}/{variant}/` path
-- See `eq/` directory for remaining unmigrated profiles
+**Completed migrations (2026-02-14):**
+- `mcp/squiglink-mcp/frequency_responses/` → `cache/fr/`
+- `mcp/autoeq-mcp/targets/` → `cache/targets/`
+- `eq/{device}/` → `cache/peq/{device}/`
+  - Device flat profiles → `cache/peq/{device}/flat.json`
+  - IEM-specific profiles → `cache/peq/{device}/{iem}/{variant}/`
+  - Generic profiles → `cache/peq/{device}/generic/default/`
 
 ## Version Control
 
