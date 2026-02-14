@@ -14,7 +14,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-from optimizer import (
+from .optimizer import (
     compute_peq,
     list_available_targets,
     export_target,
