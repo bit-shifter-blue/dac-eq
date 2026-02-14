@@ -33,21 +33,6 @@ venv/
 # Local Claude settings (user-specific)
 .claude/settings.local.json
 
-# Development and planning files (not for distribution)
-claude-self-dialog/
-trash/
-interactive-dac-eq/
-DISTRIBUTION.md
-GIT_SETUP.md
-RELEASE_CHECKLIST.md
-
-# MCP server caches
-mcp/squiglink-mcp/frequency_responses/
-mcp/autoeq-mcp/__pycache__/
-
-# Per-server envrc files (consolidated to unified venv)
-mcp/*/.envrc
-
 # Generated config (will be created by install.sh)
 .mcp.json
 .streamlit/secrets.toml

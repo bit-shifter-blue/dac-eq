@@ -197,10 +197,15 @@ rm -rf eq-advisor
 
 **Source code:**
 - CLI tool: `cli.py`
-- Device handlers: `peq_devices/`
-- MCP servers: `mcp/peq-devices-mcp/`, `mcp/squiglink-mcp/`, `mcp/autoeq-mcp/`
-- Target curves: `mcp/autoeq-mcp/targets/`
-- Example profiles: `eq/`
+- MCP servers & libraries: `tools/`
+  - `tools/peq_devices/` - Device handlers + MCP server
+  - `tools/squiglink/` - IEM data + MCP server
+  - `tools/autoeq/` - EQ optimization + MCP server
+- Cache directory: `cache/`
+  - `cache/fr/` - Frequency response measurements
+  - `cache/targets/` - Target curves
+  - `cache/peq/` - PEQ profiles
+- Development tools: `dev-tools/` (not distributed)
 
 **Nothing is installed system-wide.** All files stay in the eq-advisor directory.
 
