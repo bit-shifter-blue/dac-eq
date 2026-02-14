@@ -29,7 +29,7 @@ from optimizer import (
 
 
 # Shared temp directory for FR data files passed between MCP servers
-TEMP_DIR = os.path.join(tempfile.gettempdir(), "dac-eq")
+TEMP_DIR = os.path.join(tempfile.gettempdir(), "eq-advisor")
 
 
 def _ensure_temp_dir():
@@ -206,7 +206,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="export_peq",
-            description="Export PEQ settings as JSON (compatible with dac-eq write_peq)",
+            description="Export PEQ settings as JSON (compatible with eq-advisor write_peq)",
             inputSchema={
                 "type": "object",
                 "properties": {

@@ -271,7 +271,7 @@ def export_fr(fr_data: list[dict]) -> str:
 
 
 def export_peq(pregain: float, filters: list[dict]) -> str:
-    """Export PEQ as JSON string (compatible with dac-eq write_peq)."""
+    """Export PEQ as JSON string (compatible with write_peq)."""
     import json
     return json.dumps({
         "pregain": pregain,

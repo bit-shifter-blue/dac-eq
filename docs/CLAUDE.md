@@ -21,7 +21,7 @@ This file provides guidance to Claude Code when working with the DAC EQ project.
 ### Core CLI Tool
 
 ```
-dac-eq.py (CLI entry point)
+eq-advisor.py (CLI entry point)
     │
     └── peq_devices/
         ├── registry.py          # Device discovery and management
@@ -56,14 +56,14 @@ Three interconnected MCP servers provide a complete EQ workflow:
          │ {pregain, filters}
          ▼
 ┌─────────────────┐
-│   dac-eq-mcp    │  Write PEQ to connected DSP device
+│   eq-advisor-mcp    │  Write PEQ to connected DSP device
 │  (server.py)    │  Wraps peq_devices package as MCP tools
 └─────────────────┘
 ```
 
 **MCP Configuration:** `.mcp.json` in project root
 - All 3 servers use unified Python virtual environment in `venv/`
-- Servers are project-scoped (only available when working in `dac-eq/` directory)
+- Servers are project-scoped (only available when working in `eq-advisor/` directory)
 
 ---
 
@@ -87,14 +87,14 @@ source venv/bin/activate
 pip install -r requirements-all.txt
 
 # Verify device detection
-python3 dac-eq.py --list
+python3 eq-advisor.py --list
 ```
 
 ### Project Structure
 
 ```
-dac-eq/
-├── dac-eq.py                 # CLI entry point
+eq-advisor/
+├── eq-advisor.py                 # CLI entry point
 ├── requirements.txt          # Python dependencies
 ├── .mcp.json                 # MCP server configuration
 │
@@ -108,7 +108,7 @@ dac-eq/
 │       └── moondrop.py       # Moondrop DSP devices
 │
 ├── mcp/                      # MCP servers
-│   ├── dac-eq-mcp/           # DSP device control
+│   ├── eq-advisor-mcp/           # DSP device control
 │   │   └── server.py
 │   ├── squiglink-mcp/        # IEM FR data
 │   │   └── server.py
@@ -139,25 +139,25 @@ dac-eq/
 
 ```bash
 # Read current PEQ settings from device
-python3 dac-eq.py --read
+python3 eq-advisor.py --read
 
 # Write PEQ from JSON profile
-python3 dac-eq.py --json eq/tanchjim-fission/example_eq.json
+python3 eq-advisor.py --json eq/tanchjim-fission/example_eq.json
 
 # Write AutoEQ txt file (legacy format)
-python3 dac-eq.py --write eq_profile.txt
+python3 eq-advisor.py --write eq_profile.txt
 
 # Set pregain only (no filter changes)
-python3 dac-eq.py --pregain -6
+python3 eq-advisor.py --pregain -6
 
 # List all connected devices
-python3 dac-eq.py --list
+python3 eq-advisor.py --list
 
 # Select specific device by ID
-python3 dac-eq.py --device 0 --json profile.json
+python3 eq-advisor.py --device 0 --json profile.json
 
 # Debug mode (show raw HID data)
-python3 dac-eq.py --debug
+python3 eq-advisor.py --debug
 ```
 
 ### Multi-Device Workflows
@@ -246,7 +246,7 @@ mcp__dac_eq__write_peq(
 - `export_target(name)` - Export target as FR data
 - `export_peq(pregain, filters)` - Export as JSON
 
-**dac-eq-mcp:**
+**eq-advisor-mcp:**
 - `list_devices()` - List connected DSP devices
 - `get_device_capabilities(device_id)` - Get device specs
 - `read_peq(device_id?)` - Read current settings (if supported)
@@ -466,7 +466,7 @@ To add support for a new device:
 
 3. **Test detection**:
    ```bash
-   python3 dac-eq.py --list --debug
+   python3 eq-advisor.py --list --debug
    ```
 
 ---
@@ -518,7 +518,7 @@ Located in `.claude/skills/eq-advisor/SKILL.md`
 4. Determine if adjustment is relative to current state or absolute target
 5. Use MCP tools to compute and apply EQ
 
-**IMPORTANT:** ALWAYS invoke the `eq-advisor` skill FIRST before using dac-eq MCP tools directly when the user wants to adjust sound.
+**IMPORTANT:** ALWAYS invoke the `eq-advisor` skill FIRST before using eq-advisor MCP tools directly when the user wants to adjust sound.
 
 ---
 
@@ -527,7 +527,7 @@ Located in `.claude/skills/eq-advisor/SKILL.md`
 ### Debug Mode
 
 ```bash
-python3 dac-eq.py --debug --list
+python3 eq-advisor.py --debug --list
 ```
 
 Shows:
@@ -541,8 +541,8 @@ Shows:
 MCP servers run as stdio processes. To test manually:
 
 ```bash
-# Test dac-eq-mcp
-cd mcp/dac-eq-mcp
+# Test eq-advisor-mcp
+cd mcp/eq-advisor-mcp
 python server.py
 
 # Send JSON-RPC request (stdin)
@@ -555,7 +555,7 @@ python server.py
 
 **Device not detected:**
 - Ensure device is plugged in via USB
-- Check `python3 dac-eq.py --list --debug` for HID enumeration
+- Check `python3 eq-advisor.py --list --debug` for HID enumeration
 - Verify device VID/PID matches handler definition
 
 **"No preset data received":**
@@ -563,7 +563,7 @@ python server.py
 - Try running the command again after 1 second
 
 **MCP server not available:**
-- Ensure you're in the `dac-eq/` directory (project-scoped servers)
+- Ensure you're in the `eq-advisor/` directory (project-scoped servers)
 - Check `.mcp.json` has correct Python paths
 - Restart Claude Code if servers were just added
 
@@ -635,12 +635,12 @@ python server.py
 
 **Apply stored profile:**
 ```bash
-python3 dac-eq.py --json eq/tanchjim-fission/harman_target.json
+python3 eq-advisor.py --json eq/tanchjim-fission/harman_target.json
 ```
 
 **Read current settings:**
 ```bash
-python3 dac-eq.py --read
+python3 eq-advisor.py --read
 ```
 
 **Auto-EQ for specific IEM:**

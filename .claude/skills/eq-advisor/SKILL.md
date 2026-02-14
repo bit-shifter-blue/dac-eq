@@ -1,7 +1,7 @@
 ---
 name: eq-advisor
-description: Structured reasoning framework for IEM EQ adjustments. Use when the user wants to change sound presentation, tune their IEMs, adjust frequency response, or achieve a specific sound signature or listening experience. ALWAYS invoke this skill FIRST before using any dac-eq MCP tools directly.
-allowed-tools: mcp__squiglink__*, mcp__autoeq__*, mcp__dac-eq__*, AskUserQuestion, Read, Write
+description: Structured reasoning framework for IEM EQ adjustments. Use when the user wants to change sound presentation, tune their IEMs, adjust frequency response, or achieve a specific sound signature or listening experience. ALWAYS invoke this skill FIRST before using any peq-devices MCP tools directly.
+allowed-tools: mcp__squiglink__*, mcp__autoeq__*, mcp__peq-devices__*, AskUserQuestion, Read, Write
 ---
 
 # IEM EQ Advisor - Structured Reasoning Framework
@@ -73,7 +73,7 @@ Determine if the user is:
 **Adjustment Mode (Relative):**
 - Describing changes to what they *currently hear*
 - "More/less/different than now"
-- Requires reading current device EQ state first via `mcp__dac-eq__read_peq`
+- Requires reading current device EQ state first via `mcp__peq-devices__read_peq`
 
 **Desired State Mode (Absolute):**
 - Describing a separate end goal
@@ -126,14 +126,14 @@ Once confirmed, invoke the appropriate tools to achieve the desired profile:
 
 1. **Compute PEQ filters:**
    - Use `mcp__autoeq__compute_peq` with the stock FR data and target curve
-   - Query device constraints via `mcp__dac-eq__get_device_capabilities` to respect filter count and type limits
+   - Query device constraints via `mcp__peq-devices__get_device_capabilities` to respect filter count and type limits
 
 2. **Review generated filters:**
    - Show the user the computed pregain and filter settings
    - Explain what each filter is doing in plain language
 
 3. **Apply to device:**
-   - Use `mcp__dac-eq__write_peq` to write to the connected device
+   - Use `mcp__peq-devices__write_peq` to write to the connected device
    - Confirm successful write
 
 4. **Provide listening guidance:**
@@ -146,8 +146,8 @@ Once confirmed, invoke the appropriate tools to achieve the desired profile:
 - **Always reason through all phases before taking action.** Do not skip ahead to execution.
 - **Make your reasoning visible to the user.** Show your thought process at each step.
 - **When in doubt, ask.** Use AskUserQuestion for structured clarification.
-- **Read device state when in Adjustment Mode.** Use `mcp__dac-eq__read_peq` before computing new filters.
-- **Respect device constraints.** Query capabilities via `mcp__dac-eq__get_device_capabilities` for filter count and type limits.
+- **Read device state when in Adjustment Mode.** Use `mcp__peq-devices__read_peq` before computing new filters.
+- **Respect device constraints.** Query capabilities via `mcp__peq-devices__get_device_capabilities` for filter count and type limits.
 - **Iterate if needed.** After applying, offer to refine based on user feedback.
 
 ## Example Invocations

@@ -77,7 +77,7 @@ TOOLS = [
         }
     },
 
-    # DAC-EQ tools - Device control
+    # PEQ-Devices tools - Device control
     {
         "name": "list_devices",
         "description": "List all connected DSP/DAC devices (Qudelix, Tanchjim, Moondrop, etc.). Returns device IDs, names, and capabilities. Use this to check what's connected before writing EQ.",

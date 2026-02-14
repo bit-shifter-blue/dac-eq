@@ -20,7 +20,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 # Create the MCP server
-server = Server("dac-eq")
+server = Server("peq-devices")
 
 
 def _with_device(device_id, callback: Callable, debug: bool = False) -> list[TextContent]:

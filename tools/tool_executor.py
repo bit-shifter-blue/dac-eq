@@ -186,7 +186,7 @@ def execute_tool(tool_name: str, tool_input: dict) -> dict:
     elif tool_name == "compute_peq":
         return _compute_peq(**tool_input)
 
-    # DAC-EQ tools
+    # PEQ-Devices tools
     elif tool_name == "list_devices":
         return _list_devices(**tool_input)
     elif tool_name == "read_peq":
@@ -348,7 +348,7 @@ def _compute_peq(fr_file: str, target: str, constraints: dict = None) -> dict:
 
 
 # ============================================================================
-# DAC-EQ tools - Device control
+# PEQ-Devices tools - Device control
 # ============================================================================
 
 def _list_devices() -> dict:

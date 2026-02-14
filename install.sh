@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# DAC-EQ Installation Script
+# EQ Advisor Installation Script
 # Automated setup for CLI tool and MCP servers
 
 set -e  # Exit on any error
@@ -138,20 +138,23 @@ cat > "$INSTALL_DIR/.mcp.json" << EOF
     "peq-devices": {
       "type": "stdio",
       "command": "$INSTALL_DIR/venv/bin/python",
-      "args": ["$INSTALL_DIR/tools/peq_devices/server.py"],
-      "env": {}
+      "args": ["-m", "tools.peq_devices.server"],
+      "env": {},
+      "cwd": "$INSTALL_DIR"
     },
     "squiglink": {
       "type": "stdio",
       "command": "$INSTALL_DIR/venv/bin/python",
-      "args": ["$INSTALL_DIR/tools/squiglink/server.py"],
-      "env": {}
+      "args": ["-m", "tools.squiglink.server"],
+      "env": {},
+      "cwd": "$INSTALL_DIR"
     },
     "autoeq": {
       "type": "stdio",
       "command": "$INSTALL_DIR/venv/bin/python",
-      "args": ["$INSTALL_DIR/tools/autoeq/server.py"],
-      "env": {}
+      "args": ["-m", "tools.autoeq.server"],
+      "env": {},
+      "cwd": "$INSTALL_DIR"
     }
   }
 }

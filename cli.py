@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DAC-EQ: Universal DSP/DAC Parametric EQ Tool
+EQ Advisor: Universal DSP/DAC Parametric EQ Tool
 Supports multiple devices: Tanchjim, Qudelix, and more
 Based on devicePEQ by Pragmatic Audio (jeromeof)
 
@@ -110,7 +110,7 @@ def _do_json(handler, filepath):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='DAC-EQ: Universal DSP/DAC Parametric EQ Tool',
+        description='EQ Advisor: Universal DSP/DAC Parametric EQ Tool',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -182,7 +182,7 @@ Supported Devices:
             print("No DSP/DAC devices found. Connect a device and try again.")
             print("\nTroubleshooting:")
             print("  1. Make sure your device is plugged in")
-            print("  2. Try: python dac-eq.py --list")
+            print("  2. Try: python cli.py --list")
             print("  3. You may need to grant terminal USB access in System Preferences")
             return
 

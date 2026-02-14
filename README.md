@@ -1,10 +1,10 @@
-# DAC-EQ
+# EQ Advisor
 
-Control Parametric EQ (PEQ) on USB DSP/DAC devices via command-line interface and Claude Code integration.
+Control Parametric EQ (PEQ) on USB DSP/DAC devices via command-line interface, Streamlit web UI, and Claude Code integration.
 
-## What is DAC-EQ?
+## What is EQ Advisor?
 
-DAC-EQ is a tool that lets you adjust the sound of your IEMs (In-Ear Monitors) by controlling the built-in equalizer in supported USB DAC devices. You can apply professional tuning profiles, auto-generate EQ settings based on measurements, or create custom sound signatures.
+EQ Advisor is a tool that lets you adjust the sound of your IEMs (In-Ear Monitors) by controlling the built-in equalizer in supported USB DAC devices. You can apply professional tuning profiles, auto-generate EQ settings based on measurements, create custom sound signatures, or use conversational AI to tune your sound.
 
 **Key features:**
 - Read and write PEQ settings to DSP devices (Tanchjim, Qudelix, Moondrop, etc.)
@@ -50,8 +50,8 @@ More devices may work but are untested. The tool auto-detects connected devices.
 ### Step 1: Download
 
 ```bash
-git clone https://github.com/bit-shifter-blue/dac-eq.git
-cd dac-eq
+git clone https://github.com/bit-shifter-blue/eq-advisor.git
+cd eq-advisor
 ```
 
 ### Step 2: Run Install Script
@@ -75,7 +75,7 @@ After installation completes, test that your device is detected:
 
 ```bash
 source venv/bin/activate
-python dac-eq.py --list
+python cli.py --list
 ```
 
 You should see your connected DSP device listed.
@@ -86,10 +86,10 @@ You should see your connected DSP device listed.
 
 Claude Code provides a conversational interface for EQ adjustments.
 
-**Start Claude Code in the dac-eq directory:**
+**Start Claude Code in the eq-advisor directory:**
 
 ```bash
-cd /path/to/dac-eq
+cd /path/to/eq-advisor
 claude
 ```
 
@@ -105,7 +105,7 @@ Claude Code will auto-detect the project-scoped MCP servers. You'll be prompted 
 - "Read my current PEQ settings"
 
 **Available MCP servers:**
-- **dac-eq:** Read/write PEQ settings to device
+- **peq-devices:** Read/write PEQ settings to device
 - **squiglink:** Fetch IEM frequency response measurements
 - **autoeq:** Compute optimal EQ filters to match target curves
 
@@ -121,22 +121,22 @@ For direct command-line control:
 source venv/bin/activate
 
 # Read current PEQ settings
-python dac-eq.py --read
+python cli.py --read
 
 # Apply stored EQ profile
-python dac-eq.py --json eq/tanchjim-fission/harman_target.json
+python cli.py --json eq/tanchjim-fission/harman_target.json
 
 # Set pregain only (no filter changes)
-python dac-eq.py --pregain -6
+python cli.py --pregain -6
 
 # List all connected devices
-python dac-eq.py --list
+python cli.py --list
 
 # Select specific device (if multiple connected)
-python dac-eq.py --device 0 --json profile.json
+python cli.py --device 0 --json profile.json
 
 # Debug mode (show raw HID communication)
-python dac-eq.py --debug
+python cli.py --debug
 ```
 
 ## EQ Profile Format
@@ -167,7 +167,7 @@ EQ profiles are stored as JSON files in the `eq/` directory.
 1. Create a JSON file in `eq/` directory
 2. Define pregain (negative values reduce overall volume to prevent clipping)
 3. Add filters with frequency (Hz), gain (dB), Q factor, and type
-4. Apply with: `python dac-eq.py --json eq/my_profile.json`
+4. Apply with: `python cli.py --json eq/my_profile.json`
 
 ## Uninstalling
 
@@ -177,11 +177,11 @@ EQ profiles are stored as JSON files in the `eq/` directory.
 ./uninstall.sh
 ```
 
-### Fully Remove DAC-EQ
+### Fully Remove EQ Advisor
 
 ```bash
 cd ..
-rm -rf dac-eq
+rm -rf eq-advisor
 ```
 
 ## What Gets Installed
@@ -193,16 +193,16 @@ rm -rf dac-eq
 **MCP configuration (`.mcp.json`):**
 - References to MCP server scripts
 - Absolute paths to Python interpreter in venv
-- Auto-detected by Claude Code when in dac-eq directory
+- Auto-detected by Claude Code when in eq-advisor directory
 
 **Source code:**
-- CLI tool: `dac-eq.py`
+- CLI tool: `cli.py`
 - Device handlers: `peq_devices/`
-- MCP servers: `mcp/dac-eq-mcp/`, `mcp/squiglink-mcp/`, `mcp/autoeq-mcp/`
+- MCP servers: `mcp/peq-devices-mcp/`, `mcp/squiglink-mcp/`, `mcp/autoeq-mcp/`
 - Target curves: `mcp/autoeq-mcp/targets/`
 - Example profiles: `eq/`
 
-**Nothing is installed system-wide.** All files stay in the dac-eq directory.
+**Nothing is installed system-wide.** All files stay in the eq-advisor directory.
 
 ## Troubleshooting
 
@@ -210,7 +210,7 @@ rm -rf dac-eq
 
 **Check USB connection:**
 ```bash
-python dac-eq.py --list --debug
+python cli.py --list --debug
 ```
 
 If your device doesn't appear:
@@ -233,13 +233,13 @@ Some devices (like Qudelix 5K) may need a brief delay between operations. Try ru
 
 ### MCP servers not appearing in Claude Code
 
-**Ensure you're in the dac-eq directory:**
+**Ensure you're in the eq-advisor directory:**
 ```bash
-cd /path/to/dac-eq
+cd /path/to/eq-advisor
 claude
 ```
 
-MCP servers are project-scoped and only available when Claude Code is running in the dac-eq directory.
+MCP servers are project-scoped and only available when Claude Code is running in the eq-advisor directory.
 
 **Reset project-specific server approvals (if needed):**
 ```bash
@@ -257,7 +257,7 @@ chmod +x install.sh uninstall.sh
 
 **Manual activation:**
 ```bash
-source /path/to/dac-eq/venv/bin/activate
+source /path/to/eq-advisor/venv/bin/activate
 ```
 
 If this fails, the venv may be corrupted. Run `./uninstall.sh` then `./install.sh` to recreate it.
@@ -266,7 +266,7 @@ If this fails, the venv may be corrupted. Run `./uninstall.sh` then `./install.s
 
 ### Device Communication
 
-DAC-EQ uses the USB HID protocol to communicate with DSP devices:
+EQ Advisor uses the USB HID protocol to communicate with DSP devices:
 
 1. **Device detection:** Scans USB HID devices for known vendor IDs
 2. **Handler selection:** Matches device to appropriate protocol handler
@@ -280,7 +280,7 @@ The three MCP servers work together for auto-EQ:
 ```
 1. squiglink → fetch IEM frequency response measurements
 2. autoeq → compute optimal PEQ filters to match target
-3. dac-eq → write filters to device
+3. peq-devices → write filters to device
 ```
 
 **Example flow:**
@@ -291,7 +291,7 @@ squiglink: Search for "Blessing 3" → get FR data
   ↓
 autoeq: Compute optimal filters (FR data + Harman target)
   ↓
-dac-eq: Write filters to connected device
+peq-devices: Write filters to connected device
 ```
 
 ### Why Unified Virtual Environment?
@@ -312,11 +312,11 @@ If you have multiple DSP devices connected:
 
 ```bash
 # List devices with IDs
-python dac-eq.py --list
+python cli.py --list
 
 # Target specific device (0-based index)
-python dac-eq.py --device 0 --json profile.json
-python dac-eq.py --device 1 --json profile.json
+python cli.py --device 0 --json profile.json
+python cli.py --device 1 --json profile.json
 ```
 
 ### Converting AutoEQ Text Files
@@ -339,18 +339,18 @@ To modify the code and test changes:
 
 ```bash
 source venv/bin/activate
-python dac-eq.py --debug  # Shows HID communication
+python cli.py --debug  # Shows HID communication
 ```
 
 No rebuild needed - Python runs directly from source.
 
 ## Contributing
 
-DAC-EQ is based on devicePEQ by Pragmatic Audio (jeromeof).
+EQ Advisor is based on devicePEQ by Pragmatic Audio (jeromeof).
 
 To report issues or request device support, please include:
 - Device name and model
-- Output of `python dac-eq.py --list --debug`
+- Output of `python cli.py --list --debug`
 - macOS version
 - Python version
 

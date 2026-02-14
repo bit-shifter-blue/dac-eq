@@ -34,29 +34,29 @@ Complex profile using all 8 filter slots with variety of parameters. Tests:
 
 ### 1. Device Detection
 ```bash
-python dac-eq.py --list --debug
+python cli.py --list --debug
 ```
 Verify Moondrop device is detected with correct handler.
 
 ### 2. Read Current Settings
 ```bash
-python dac-eq.py --read --json moondrop_current.json --debug
+python cli.py --read --json moondrop_current.json --debug
 ```
 Capture current device settings.
 
 ### 3. Write Test Profile
 ```bash
-python dac-eq.py --json eq/moondrop/flat_eq.json --debug
+python cli.py --json eq/moondrop/flat_eq.json --debug
 ```
 Write a test profile to device.
 
 ### 4. Round-Trip Test
 ```bash
 # Write profile
-python dac-eq.py --json eq/moondrop/comprehensive_test.json
+python cli.py --json eq/moondrop/comprehensive_test.json
 
 # Read it back
-python dac-eq.py --read --json moondrop_readback.json
+python cli.py --read --json moondrop_readback.json
 
 # Compare (values should match within rounding tolerance)
 diff eq/moondrop/comprehensive_test.json moondrop_readback.json

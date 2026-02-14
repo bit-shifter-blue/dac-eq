@@ -3,24 +3,24 @@
 ## What You're Installing
 
 DAC EQ is a Python tool that:
-- **CLI Tool (dac-eq.py):** Communicates with USB DSP/DAC devices (Tanchjim, Qudelix, Moondrop) via HID protocol
+- **CLI Tool (eq-advisor.py):** Communicates with USB DSP/DAC devices (Tanchjim, Qudelix, Moondrop) via HID protocol
 - **MCP Servers (3 Python processes):**
-  - `dac-eq-mcp`: Wraps CLI functions for Claude Code
+  - `eq-advisor-mcp`: Wraps CLI functions for Claude Code
   - `squiglink-mcp`: Fetches public IEM frequency response data
   - `autoeq-mcp`: Computes EQ filter settings using scipy
 
-All source code is open on GitHub at: https://github.com/bit-shifter-blue/dac-eq
+All source code is open on GitHub at: https://github.com/bit-shifter-blue/eq-advisor
 
 ## What Changes on Your System
 
 **install.sh does:**
-- Creates `dac-eq/venv/` directory (~300MB, Python dependencies)
-- Creates `dac-eq/.mcp.json` file (MCP server configuration, generated)
+- Creates `eq-advisor/venv/` directory (~300MB, Python dependencies)
+- Creates `eq-advisor/.mcp.json` file (MCP server configuration, generated)
 - Installs Python packages: hidapi, mcp, scipy, numpy, httpx
 
 **Does NOT modify:**
 - System Python or global packages
-- Home directory (all changes are within `dac-eq/` folder)
+- Home directory (all changes are within `eq-advisor/` folder)
 - System files or permissions
 - Your git config (unless you explicitly run `git config`)
 
@@ -34,17 +34,17 @@ All source code is open on GitHub at: https://github.com/bit-shifter-blue/dac-eq
   ./uninstall.sh
 
 **This completely removes:**
-- All dac-eq source code
+- All eq-advisor source code
 - Virtual environment (`venv/`)
 - MCP configuration (`.mcp.json`)
 - EQ profiles (`eq/` folder)
-- Everything else in the dac-eq directory
+- Everything else in the eq-advisor directory
 
 **The uninstall script will:**
 1. Warn you that EQ profiles will be deleted
 2. Ask if you've backed them up (gives you a chance to cancel and backup first)
 3. Ask for final confirmation
-4. Remove the entire dac-eq directory
+4. Remove the entire eq-advisor directory
 
 **To keep your EQ profiles:** When prompted, cancel the script and run:
 ```
@@ -73,8 +73,8 @@ Then run uninstall again.
 
 ## Review Before Installing
 
-- Source code: https://github.com/bit-shifter-blue/dac-eq
-- Main entry point: `dac-eq.py`
+- Source code: https://github.com/bit-shifter-blue/eq-advisor
+- Main entry point: `eq-advisor.py`
 - Device handlers: `peq_devices/handlers/`
 - MCP servers: `mcp/*/server.py`
 
@@ -82,8 +82,8 @@ Then run uninstall again.
 
 - Review the source code on GitHub
 - Run `install.sh` with `--help` to see all options (if available)
-- Check `python3 dac-eq.py --help` for CLI options before using
-- Examine `dac-eq/.mcp.json` after install to see what commands Claude Code can access
+- Check `python3 eq-advisor.py --help` for CLI options before using
+- Examine `eq-advisor/.mcp.json` after install to see what commands Claude Code can access
 
 ## Reporting Security Issues
 

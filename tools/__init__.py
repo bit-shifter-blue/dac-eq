@@ -1,6 +1,6 @@
 """
 Tool definitions and executors for EQ Advisor
-Wraps dac-eq MCP functionality for Claude API
+Wraps peq-devices MCP functionality for Claude API
 """
 
 from .tool_definitions import TOOLS

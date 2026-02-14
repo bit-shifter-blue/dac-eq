@@ -14,7 +14,7 @@ from mcp.types import Tool, TextContent
 import httpx
 
 # Shared temp directory for FR data files passed between MCP servers
-TEMP_DIR = os.path.join(tempfile.gettempdir(), "dac-eq")
+TEMP_DIR = os.path.join(tempfile.gettempdir(), "eq-advisor")
 
 
 def _ensure_temp_dir():

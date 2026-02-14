@@ -17,7 +17,7 @@ Tool definitions and executors for Claude API integration.
 ### AutoEQ (EQ Computation)
 - ✅ `compute_peq` - Compute optimal PEQ filters *(fully working!)*
 
-### DAC-EQ (Device Control)
+### PEQ-Devices (Device Control)
 - ✅ `list_devices` - List connected DSP devices *(fully implemented)*
 - ✅ `read_peq` - Read current PEQ from device *(fully implemented)*
 - ✅ `write_peq` - Write PEQ to device *(fully implemented)*
@@ -26,7 +26,7 @@ Tool definitions and executors for Claude API integration.
 
 **Phase 2.0:** ✅ Complete
 - ✅ Tool definitions complete
-- ✅ DAC-EQ tools fully working (device control)
+- ✅ PEQ-Devices tools fully working (device control)
 - ✅ Framework for squiglink/autoeq
 
 **Phase 2.1:** ✅ Complete!

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# DAC-EQ Uninstallation Script
-# Completely removes dac-eq and all files
+# EQ Advisor Uninstallation Script
+# Completely removes eq-advisor and all files
 
 # Color codes for output
 RED='\033[0;31m'
@@ -15,10 +15,10 @@ PARENT_DIR="$(dirname "$INSTALL_DIR")"
 INSTALL_NAME="$(basename "$INSTALL_DIR")"
 
 echo "======================================"
-echo "  DAC-EQ Uninstallation"
+echo "  EQ Advisor Uninstallation"
 echo "======================================"
 echo ""
-echo -e "${YELLOW}⚠ This will completely remove dac-eq${NC}"
+echo -e "${YELLOW}⚠ This will completely remove eq-advisor${NC}"
 echo ""
 echo "Including:"
 echo "  - All source code"
@@ -39,7 +39,7 @@ if [[ "$backup_confirm" != "y" ]] && [[ "$backup_confirm" != "Y" ]]; then
 fi
 
 echo ""
-read -p "Permanently delete dac-eq? This cannot be undone. (y/N): " final_confirm
+read -p "Permanently delete eq-advisor? This cannot be undone. (y/N): " final_confirm
 
 if [[ "$final_confirm" != "y" ]] && [[ "$final_confirm" != "Y" ]]; then
     echo "Uninstall cancelled."
@@ -47,7 +47,7 @@ if [[ "$final_confirm" != "y" ]] && [[ "$final_confirm" != "Y" ]]; then
 fi
 
 echo ""
-echo "Removing dac-eq..."
+echo "Removing eq-advisor..."
 
 # Remove everything in the directory from a subshell (allows deletion of the directory itself)
 (
@@ -55,7 +55,7 @@ echo "Removing dac-eq..."
   rm -rf "$INSTALL_NAME" 2>/dev/null
 )
 
-echo -e "${GREEN}✓${NC} dac-eq uninstalled"
+echo -e "${GREEN}✓${NC} eq-advisor uninstalled"
 
 echo ""
 echo "======================================"
