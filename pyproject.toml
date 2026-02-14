@@ -3,16 +3,16 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "dac-eq"
-version = "0.1.0"
-description = "CLI and MCP servers for controlling DSP/DAC parametric EQ via USB HID"
+name = "eq-advisor"
+version = "1.0.0"
+description = "Conversational IEM EQ tuning with Streamlit, CLI, and MCP servers for USB audio devices"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "ISC"}
 authors = [
     {name = "Matthew Russo"},
 ]
-keywords = ["audio", "dsp", "eq", "parametric-eq", "usb", "hid", "iem", "headphones"]
+keywords = ["audio", "eq", "parametric-eq", "iem", "headphones", "streamlit", "claude", "ai", "usb", "hid"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: End Users/Desktop",
@@ -33,8 +33,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/bit-shifter-blue/dac-eq"
-Issues = "https://github.com/bit-shifter-blue/dac-eq/issues"
+Homepage = "https://github.com/bit-shifter-blue/eq-advisor"
+Issues = "https://github.com/bit-shifter-blue/eq-advisor/issues"
 
 [project.optional-dependencies]
 dev = [
