@@ -1,38 +1,27 @@
 """
 Tool executor for EQ Advisor
-Implements the actual tool logic by calling dac-eq MCP functionality
+Implements the actual tool logic using local modules
 """
 
-import sys
 import json
 import os
 import tempfile
-from pathlib import Path
 import httpx
 
-# Add dac-eq to Python path to import its modules
-DAC_EQ_PATH = Path(__file__).parent.parent.parent / "dac-eq"
-sys.path.insert(0, str(DAC_EQ_PATH))
-
-# Also add autoeq-mcp to path
-AUTOEQ_MCP_PATH = DAC_EQ_PATH / "mcp" / "autoeq-mcp"
-sys.path.insert(0, str(AUTOEQ_MCP_PATH))
-
-# Import dac-eq modules
-import peq_devices
-from peq_devices.registry import DeviceRegistry
-from peq_devices.base import PEQProfile, FilterDefinition
+# Import from local tools/ subdirectories
+from .peq_devices.registry import DeviceRegistry
+from .peq_devices.base import PEQProfile, FilterDefinition
 
 # Import autoeq optimizer (optional - only if autoeq library is installed)
 try:
-    from optimizer import compute_peq as autoeq_compute_peq
+    from .autoeq.optimizer import compute_peq as autoeq_compute_peq
     AUTOEQ_AVAILABLE = True
 except ImportError:
     AUTOEQ_AVAILABLE = False
     print("Warning: autoeq library not available. PEQ computation will return stubs.")
 
 # Shared temp directory for FR data files
-TEMP_DIR = os.path.join(tempfile.gettempdir(), "dac-eq")
+TEMP_DIR = os.path.join(tempfile.gettempdir(), "eq-advisor")
 
 # Squiglink databases
 DATABASES = {
