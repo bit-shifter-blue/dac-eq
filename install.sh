@@ -138,19 +138,19 @@ cat > "$INSTALL_DIR/.mcp.json" << EOF
     "peq-devices": {
       "type": "stdio",
       "command": "$INSTALL_DIR/venv/bin/python",
-      "args": ["$INSTALL_DIR/mcp/dac-eq-mcp/server.py"],
+      "args": ["$INSTALL_DIR/tools/peq_devices/server.py"],
       "env": {}
     },
     "squiglink": {
       "type": "stdio",
       "command": "$INSTALL_DIR/venv/bin/python",
-      "args": ["$INSTALL_DIR/mcp/squiglink-mcp/server.py"],
+      "args": ["$INSTALL_DIR/tools/squiglink/server.py"],
       "env": {}
     },
     "autoeq": {
       "type": "stdio",
       "command": "$INSTALL_DIR/venv/bin/python",
-      "args": ["$INSTALL_DIR/mcp/autoeq-mcp/server.py"],
+      "args": ["$INSTALL_DIR/tools/autoeq/server.py"],
       "env": {}
     }
   }

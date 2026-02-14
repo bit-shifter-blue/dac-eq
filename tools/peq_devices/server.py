@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
 """
-DAC-EQ MCP Server: Universal DSP/DAC Parametric EQ Control
+PEQ Devices MCP Server: Parametric EQ Device Control
 
 Supports multiple devices: Tanchjim, Qudelix, Moondrop, and more
 Exposes PEQ control functionality as MCP tools using stdio transport.
-Part of the DAC-EQ project.
+Part of the EQ Advisor project.
 """
 import json
-import sys
-import os
 from typing import Any, Callable
 
-# Add project root to path for peq_devices import
-# server.py is at mcp/dac-eq-mcp/server.py, so go up 3 levels to dac-eq/
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
+# Import from same package (tools.peq_devices)
 try:
-    from peq_devices import DeviceRegistry, PEQProfile, FilterDefinition, DeviceError, ProfileValidationError
+    from . import DeviceRegistry, PEQProfile, FilterDefinition, DeviceError, ProfileValidationError
 except ImportError:
     DeviceRegistry = None
 
