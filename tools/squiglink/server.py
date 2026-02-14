@@ -6,33 +6,34 @@ Squiglink MCP Server - Fetch IEM frequency response data from squig.link databas
 import asyncio
 import json
 import os
-import tempfile
 from pathlib import Path
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 import httpx
 
-# Shared temp directory for FR data files passed between MCP servers
-TEMP_DIR = os.path.join(tempfile.gettempdir(), "eq-advisor")
+# Project root (eq-advisor/)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# FR cache directory (persistent, not temp)
+FR_CACHE_DIR = PROJECT_ROOT / "cache" / "fr"
 
 
-def _ensure_temp_dir():
-    """Create temp directory if it doesn't exist."""
-    os.makedirs(TEMP_DIR, exist_ok=True)
+def normalize_iem_name(name: str) -> str:
+    """
+    Normalize IEM name to cache-friendly format.
+
+    Examples:
+        "Moondrop Blessing 3" -> "moondrop-blessing-3"
+        "KZ ZSN Pro X" -> "kz-zsn-pro-x"
+        "7Hz Salnotes Zero" -> "7hz-salnotes-zero"
+    """
+    return name.lower().replace(" ", "-").replace("_", "-")
 
 
-def _save_fr_to_temp(name: str, data: list[dict]) -> str:
-    """Save FR data to temp file. Returns the file path."""
-    _ensure_temp_dir()
-    safe_name = name.replace("/", "-").replace("\\", "-").replace(" ", "_")
-    path = os.path.join(TEMP_DIR, f"fr_{safe_name}.json")
-    with open(path, "w") as f:
-        json.dump(data, f)
-    return path
-
-# FR cache directory
-FR_CACHE_DIR = Path(__file__).parent / "frequency_responses"
+def _ensure_cache_dir():
+    """Create cache directory if it doesn't exist."""
+    FR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Popular squig.link databases
 DATABASES = {
@@ -52,16 +53,34 @@ server = Server("squiglink")
 _phone_book_cache: dict[str, list] = {}
 
 
-def get_cache_path(name: str) -> Path:
-    """Get cache file path for an IEM name."""
-    # Sanitize name for filesystem
-    safe_name = name.replace("/", "-").replace("\\", "-")
-    return FR_CACHE_DIR / f"{safe_name}.csv"
+def get_cache_path(iem_name: str, variant: str = "default") -> Path:
+    """
+    Get cache file path for an IEM name and variant.
+
+    Args:
+        iem_name: IEM name (will be normalized)
+        variant: Variant name (default: "default")
+
+    Returns:
+        Path to: cache/fr/{normalized-iem-name}/{variant}.csv
+    """
+    normalized = normalize_iem_name(iem_name)
+    iem_dir = FR_CACHE_DIR / normalized
+    return iem_dir / f"{variant}.csv"
 
 
-def load_from_cache(name: str) -> list[dict] | None:
-    """Load FR data from cache if it exists. Returns list of {freq, db} dicts or None."""
-    cache_path = get_cache_path(name)
+def load_from_cache(iem_name: str, variant: str = "default") -> list[dict] | None:
+    """
+    Load FR data from cache if it exists.
+
+    Args:
+        iem_name: IEM name (will be normalized)
+        variant: Variant name (default: "default")
+
+    Returns:
+        List of {freq, db} dicts or None if not cached
+    """
+    cache_path = get_cache_path(iem_name, variant)
     if not cache_path.exists():
         return None
 
@@ -80,10 +99,20 @@ def load_from_cache(name: str) -> list[dict] | None:
         return None
 
 
-def save_to_cache(name: str, data_points: list[dict]) -> Path:
-    """Save FR data to cache as CSV. Returns the cache path."""
-    FR_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    cache_path = get_cache_path(name)
+def save_to_cache(iem_name: str, data_points: list[dict], variant: str = "default") -> Path:
+    """
+    Save FR data to cache as CSV.
+
+    Args:
+        iem_name: IEM name (will be normalized)
+        data_points: List of {freq, db} dicts
+        variant: Variant name (default: "default")
+
+    Returns:
+        Path to cached file
+    """
+    cache_path = get_cache_path(iem_name, variant)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(cache_path, "w") as f:
         f.write("frequency,raw\n")
@@ -94,10 +123,10 @@ def save_to_cache(name: str, data_points: list[dict]) -> Path:
 
 
 def list_cached_fr() -> list[str]:
-    """List all cached FR measurements."""
+    """List all cached IEM names (directory names)."""
     if not FR_CACHE_DIR.exists():
         return []
-    return sorted([f.stem for f in FR_CACHE_DIR.glob("*.csv")])
+    return sorted([d.name for d in FR_CACHE_DIR.iterdir() if d.is_dir()])
 
 
 def search_cached_fr(query: str) -> list[dict]:

@@ -52,3 +52,16 @@ mcp/*/.envrc
 .mcp.json
 .streamlit/secrets.toml
 archive/
+
+# Cache directory (user-specific data)
+cache/
+# EXCEPT: Ship default examples
+!cache/README.md
+!cache/fr/
+!cache/fr/*/
+!cache/fr/*/default.csv
+!cache/targets/
+!cache/targets/*.csv
+!cache/peq/
+!cache/peq/*/
+!cache/peq/*/flat.json
