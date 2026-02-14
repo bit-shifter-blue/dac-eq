@@ -50,3 +50,4 @@ mcp/*/.envrc
 
 # Generated config (will be created by install.sh)
 .mcp.json
+.streamlit/secrets.toml

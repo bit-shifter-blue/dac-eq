@@ -1,0 +1,16 @@
+# EQ Advisor Configuration
+# Application settings (non-sensitive)
+
+[model]
+# Which Claude model to use
+# Options:
+#   - "claude-haiku-4-5-20251001"   (cheapest, ~$0.25/1M tokens)
+#   - "claude-sonnet-4-5-20250929"  (more capable, ~$3/1M tokens)
+#   - "claude-opus-4-6"             (most capable, ~$15/1M tokens)
+id = "claude-haiku-4-5-20251001"
+max_tokens = 4096  # Increased for multi-tool conversations
+temperature = 1.0
+
+[ui]
+page_title = "EQ Advisor"
+page_icon = "🎧"
