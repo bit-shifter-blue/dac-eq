@@ -338,6 +338,93 @@ Opens browser to `localhost:8501` automatically.
 
 ---
 
+## API Key Strategy for Testing
+
+### The Problem
+Distributing the app with your API key means **you pay for every user session**. For testing with strangers, this is risky.
+
+### The Solution: Temporary Test Keys
+
+**Create a time-limited test key:**
+
+1. **Create dedicated test key** at https://console.anthropic.com/settings/keys
+   - Name: "Streamlit Prototype Test - [Month Year]"
+   - This is separate from your main API key
+
+2. **Set spending limit** in Anthropic account settings
+   - Navigate to Billing → Set spending limit
+   - Example: $20 maximum for entire test period
+   - Protects against runaway costs
+
+3. **Distribute app with embedded test key**
+   - Give prototype to 5-10 test users
+   - Communicate: "This is a 1-week test, expires [date]"
+
+4. **After test period: Delete the key**
+   - App stops working for all users
+   - No ongoing cost exposure
+   - Zero risk after deletion
+
+### Monitoring During Test
+
+- Anthropic console shows real-time usage per API key
+- If someone abuses it (hundreds of sessions), delete key immediately
+- Create new key for remaining legitimate testers
+
+### Test Window Example
+
+```
+Day 0:  Create test API key, set $20 spending limit
+Day 1:  Distribute app to 10 test users
+Day 7:  Collect feedback, delete API key
+Day 8:  Decide: build backend, require user keys, or productize?
+```
+
+**Maximum cost exposure:** $20 (your spending limit)
+**Risk level:** Near zero (you control the kill switch)
+
+### Embedding the Key
+
+**Option 1: Secrets file (recommended)**
+```python
+# .streamlit/secrets.toml (distributed with app)
+ANTHROPIC_API_KEY = "sk-ant-TEST-KEY-HERE"
+```
+
+**Option 2: Hardcoded (simpler for testing)**
+```python
+# streamlit_app.py
+API_KEY = "sk-ant-TEST-KEY-HERE"  # NOTE: Delete this key after Jan 31
+client = anthropic.Anthropic(api_key=API_KEY)
+
+# Add expiration warning in UI
+st.warning("⚠️ Test version - expires Jan 31, 2026")
+```
+
+### After Testing Completes
+
+If prototype is successful, choose permanent API strategy:
+
+**Option A: Backend Proxy** (1-2 days work)
+- Deploy server (Vercel Edge Functions for multi-region)
+- Server holds API key securely
+- Users can't extract or abuse it
+- Add rate limiting and authentication
+
+**Option B: User-Provided Keys** (no cost, but friction)
+- App prompts user for their own Anthropic API key
+- They pay their own costs (~$0.003-0.01/session)
+- Limits audience to technical users who already have API accounts
+
+**Option C: Paid Product** (most ambitious)
+- Charge subscription that covers API costs
+- Example: $5/month includes unlimited EQ sessions
+- Requires payment integration + backend infrastructure
+
+For testing phase, **temporary keys are perfect**: low risk, real user data, no backend complexity.
+
+---
+
 ## Success Criteria
 
 ### Must Have
@@ -416,18 +503,36 @@ If prototype validates the concept:
 
 **After Phase 2 (Day 5):** Does tool_use work smoothly? If not, reassess approach.
 
-**After Phase 3 (Day 7):** Is conversational tuning actually better than sliders? If not, consider stopping.
+**After Phase 3 (Day 7):** Is the conversational UX better than Claude Code's interface? Does it work for non-technical users?
 
-**After Phase 6 (Day 14):** Is this worth productizing? Check API costs, user feedback, technical feasibility.
+**After Phase 6 (Day 14):** Ready for user testing. Create temporary API key, set spending limit.
+
+**After Test Week (Day 21):**
+- Delete temporary API key
+- Review actual API costs from testing
+- Collect user feedback
+- Decide on permanent API strategy (backend proxy, user keys, or paid product)
 
 ---
 
 ## Conclusion
 
-This prototype answers the core question: **Is AI-powered conversational EQ tuning valuable?**
+This prototype answers the critical questions:
 
-- **Low risk:** 1-2 weeks investment, reuses existing code
-- **High signal:** Proves (or disproves) the novel part of your idea
-- **No commitment:** If it doesn't work, you learned something. If it does, you have a path to production.
+1. **Does conversational EQ work outside Claude Code?** (UX validation)
+2. **Can non-technical users operate it?** (Usability validation)
+3. **What do API costs look like in practice?** (Economics validation)
 
-Build this first. Everything else (GUI, payments, distribution) can wait until you know the core concept works.
+**Risk profile:**
+- **Time investment:** 1-2 weeks to build, 1 week to test
+- **Cost exposure:** $20 maximum (spending limit on test API key)
+- **Technical risk:** Low - reuses all existing code (handlers, MCP logic, eq-advisor)
+
+**What you learn:**
+- Real per-session API costs (not Claude Pro estimates)
+- Whether strangers can successfully use it
+- If the UX is compelling enough to warrant productization
+
+**The temporary API key approach** means you can test with real users for ~$20 total cost, then kill the key. No backend infrastructure, no ongoing costs, no risk beyond the test period.
+
+Build this first. Everything else (GUI, payments, distribution, backend) can wait until you have real user feedback and cost data.
