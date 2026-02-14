@@ -1,1 +1,20 @@
-hidapi>=0.14.0
+# EQ Advisor - Unified Dependencies
+# Includes CLI tool, MCP servers, and Streamlit app
+
+# === Streamlit Web App ===
+streamlit>=1.30.0
+anthropic>=0.18.0
+tomli>=2.0.0; python_version < '3.11'  # TOML config (built-in for Python 3.11+)
+
+# === Core Device Communication ===
+hidapi>=0.14.0       # USB HID device communication
+
+# === MCP Servers (Claude Code integration) ===
+mcp>=1.0.0           # MCP protocol
+
+# === Audio/EQ Processing ===
+autoeq>=2.0.0        # AutoEQ library (includes scipy, numpy as dependencies)
+httpx>=0.24.0        # HTTP client for squiglink database fetching
+
+# === Optional (for future visualization) ===
+# plotly>=5.18.0
