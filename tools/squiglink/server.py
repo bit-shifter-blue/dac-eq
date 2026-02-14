@@ -135,13 +135,19 @@ def search_cached_fr(query: str) -> list[dict]:
     query_lower = query.lower()
     results = []
 
-    for name in cached:
-        if query_lower in name.lower():
+    for iem_name in cached:
+        if query_lower in iem_name.lower():
+            # List variants for this IEM
+            iem_dir = FR_CACHE_DIR / iem_name
+            variants = []
+            if iem_dir.is_dir():
+                variants = [f.stem for f in iem_dir.glob("*.csv")]
+
             results.append({
-                "brand": "",  # Not stored in cache filename
-                "name": name,
-                "file": name,
-                "variants": [name],
+                "brand": "",  # Not stored in cache
+                "name": iem_name.replace("-", " ").title(),  # Display name
+                "file": iem_name,  # Normalized cache name
+                "variants": variants,
                 "price": "",
                 "database": "cached",
                 "cached": True,
@@ -220,7 +226,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="get_fr_data",
-            description="Fetch frequency response measurement data for a specific IEM. Use search_iems first to find the database and file name.",
+            description="Fetch frequency response measurement data for a specific IEM. Returns file path only (no data arrays). Use search_iems first to find the database and file name.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -231,6 +237,10 @@ async def list_tools() -> list[Tool]:
                     "file": {
                         "type": "string",
                         "description": "File name from search results (without .txt extension)"
+                    },
+                    "variant": {
+                        "type": "string",
+                        "description": "IEM variant (e.g., 'default', 'red-nozzle', 'blue-nozzle'). Defaults to 'default'."
                     }
                 },
                 "required": ["database", "file"]
@@ -327,23 +337,25 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         elif name == "get_fr_data":
             database = arguments.get("database", "")
             file_name = arguments.get("file", "")
+            variant = arguments.get("variant", "default")  # Default to "default" variant
 
             # Handle "cached" as a special database that only checks local cache
             if database == "cached":
-                cached_data = load_from_cache(file_name)
+                cached_data = load_from_cache(file_name, variant)
                 if not cached_data:
-                    return [TextContent(type="text", text=f"No cached data found for '{file_name}'. Use search_iems to find and fetch it first.")]
+                    return [TextContent(type="text", text=f"No cached data found for '{file_name}' (variant: {variant}). Use search_iems to find and fetch it first.")]
             elif database not in DATABASES:
                 return [TextContent(type="text", text=f"Unknown database: {database}. Use list_databases to see available options.")]
             else:
                 # Check cache first for web databases too
-                cached_data = load_from_cache(file_name)
+                cached_data = load_from_cache(file_name, variant)
+
             if cached_data:
-                # Save to temp file for cross-MCP passing
-                fr_path = _save_fr_to_temp(file_name, cached_data)
+                # Return cache file path (no temp files)
+                fr_path = str(get_cache_path(file_name, variant))
 
                 result = f"## Frequency Response Data: {file_name}\n"
-                result += f"Source: **CACHED** ({get_cache_path(file_name)})\n\n"
+                result += f"Source: **CACHED** ({fr_path})\n\n"
                 result += f"Total data points: {len(cached_data)}\n"
                 result += f"fr_file: {fr_path}\n\n"
 
@@ -440,12 +452,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 except Exception:
                     continue
 
-            # Save to cache and temp file
+            # Save to cache (persistent, no temp files)
             if data_points:
-                cache_path = save_to_cache(file_name, data_points)
+                cache_path = save_to_cache(file_name, data_points, variant)
                 cache_msg = f"Cached to: {cache_path}\n"
-                fr_path = _save_fr_to_temp(file_name, data_points)
-                fr_file_msg = f"fr_file: {fr_path}\n"
+                fr_file_msg = f"fr_file: {cache_path}\n"
             else:
                 cache_msg = ""
                 fr_file_msg = ""

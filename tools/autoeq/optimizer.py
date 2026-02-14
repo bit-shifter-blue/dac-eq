@@ -10,7 +10,11 @@ import numpy as np
 from autoeq.frequency_response import FrequencyResponse
 
 
-TARGETS_DIR = Path(__file__).parent / "targets"
+# Project root (eq-advisor/)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+# Targets directory (persistent cache, not temp)
+TARGETS_DIR = PROJECT_ROOT / "cache" / "targets"
 
 # Default device constraints
 DEFAULT_CONSTRAINTS = {

@@ -28,32 +28,42 @@ from .optimizer import (
 )
 
 
-# Shared temp directory for FR data files passed between MCP servers
-TEMP_DIR = os.path.join(tempfile.gettempdir(), "eq-advisor")
+def _load_fr_from_file(fr_file: str) -> list[dict]:
+    """
+    Load FR data from file path. FILE-ONLY (no arrays).
 
+    Args:
+        fr_file: Path to FR data file (CSV or JSON)
 
-def _ensure_temp_dir():
-    """Create temp directory if it doesn't exist."""
-    os.makedirs(TEMP_DIR, exist_ok=True)
+    Returns:
+        List of {freq, db} dicts
 
+    Raises:
+        ValueError: If file doesn't exist or is invalid
+    """
+    if not fr_file:
+        raise ValueError("fr_file is required (array passing not supported)")
 
-def _load_fr(fr_data=None, fr_file=None):
-    """Resolve FR data from inline array or file path."""
-    if fr_data:
-        return fr_data
-    if fr_file:
-        with open(fr_file) as f:
+    from pathlib import Path
+    file_path = Path(fr_file)
+    if not file_path.exists():
+        raise ValueError(f"FR file not found: {fr_file}")
+
+    # Support both CSV and JSON formats
+    if file_path.suffix == ".csv":
+        # Parse CSV format (frequency,raw)
+        data = []
+        with open(file_path) as f:
+            lines = f.readlines()
+            for line in lines[1:]:  # Skip header
+                parts = line.strip().split(",")
+                if len(parts) >= 2:
+                    data.append({"freq": float(parts[0]), "db": float(parts[1])})
+        return data
+    else:
+        # JSON format
+        with open(file_path) as f:
             return json.load(f)
-    return None
-
-
-def _save_fr(data: list[dict], filename: str) -> str:
-    """Save FR data to temp file. Returns the file path."""
-    _ensure_temp_dir()
-    path = os.path.join(TEMP_DIR, filename)
-    with open(path, "w") as f:
-        json.dump(data, f)
-    return path
 
 
 def _fr_summary(data: list[dict], path: str, label: str = "FR Data") -> str:
@@ -91,25 +101,13 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="compute_peq",
-            description="Compute optimal PEQ filters from FR data to match a target curve",
+            description="Compute optimal PEQ filters from FR data file to match a target curve. FILE-ONLY (no data arrays).",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "fr_data": {
-                        "type": "array",
-                        "description": "Frequency response data as array of {freq, db} objects (squig.link format)",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "freq": {"type": "number", "description": "Frequency in Hz"},
-                                "db": {"type": "number", "description": "SPL in dB"}
-                            },
-                            "required": ["freq", "db"]
-                        }
-                    },
                     "fr_file": {
                         "type": "string",
-                        "description": "Path to FR data JSON file (alternative to fr_data). Use the fr_file path from get_fr_data output."
+                        "description": "Path to FR data file (CSV or JSON). Use the fr_file path from get_fr_data output."
                     },
                     "target": {
                         "type": "string",
@@ -152,7 +150,7 @@ async def list_tools() -> list[Tool]:
                         }
                     }
                 },
-                "required": ["target"]
+                "required": ["fr_file", "target"]
             }
         ),
         Tool(
@@ -402,12 +400,17 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     """Handle tool calls."""
 
     if name == "compute_peq":
-        fr_data = _load_fr(arguments.get("fr_data"), arguments.get("fr_file"))
+        fr_file = arguments.get("fr_file")
         target = arguments.get("target")
         constraints = arguments.get("constraints", DEFAULT_CONSTRAINTS.copy())
 
-        if not fr_data:
-            return [TextContent(type="text", text="Error: No FR data provided. Pass fr_data array or fr_file path.")]
+        if not fr_file:
+            return [TextContent(type="text", text="Error: fr_file is required (array passing not supported).")]
+
+        try:
+            fr_data = _load_fr_from_file(fr_file)
+        except ValueError as e:
+            return [TextContent(type="text", text=f"Error loading FR file: {e}")]
 
         if not target:
             return [TextContent(type="text", text="Error: No target curve specified")]
