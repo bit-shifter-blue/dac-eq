@@ -44,7 +44,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["dsp_devices", "dsp_devices.handlers"]
+packages = ["peq_devices", "peq_devices.handlers"]
 
 [tool.setuptools.package-data]
 "*" = ["*.csv", "*.json"]

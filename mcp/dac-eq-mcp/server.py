@@ -11,12 +11,12 @@ import sys
 import os
 from typing import Any, Callable
 
-# Add project root to path for dsp_devices import
+# Add project root to path for peq_devices import
 # server.py is at mcp/dac-eq-mcp/server.py, so go up 3 levels to dac-eq/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 try:
-    from dsp_devices import DeviceRegistry, PEQProfile, FilterDefinition, DeviceError, ProfileValidationError
+    from peq_devices import DeviceRegistry, PEQProfile, FilterDefinition, DeviceError, ProfileValidationError
 except ImportError:
     DeviceRegistry = None
 
@@ -40,7 +40,7 @@ def _with_device(device_id, callback: Callable, debug: bool = False) -> list[Tex
         list[TextContent] with JSON result or error message
     """
     if not DeviceRegistry:
-        return [TextContent(type="text", text="Error: dsp_devices package not found.")]
+        return [TextContent(type="text", text="Error: peq_devices package not found.")]
 
     try:
         registry = DeviceRegistry(debug=debug)
@@ -295,7 +295,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         if not DeviceRegistry:
             return [TextContent(
                 type="text",
-                text="Error: dsp_devices package not found. Make sure dependencies are installed."
+                text="Error: peq_devices package not found. Make sure dependencies are installed."
             )]
 
         try:
@@ -332,7 +332,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         if not DeviceRegistry:
             return [TextContent(
                 type="text",
-                text="Error: dsp_devices package not found."
+                text="Error: peq_devices package not found."
             )]
 
         device_id = arguments.get("device_id")

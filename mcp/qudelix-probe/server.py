@@ -15,12 +15,12 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-# Add parent directory to path to import dsp_devices
+# Add parent directory to path to import peq_devices
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from dsp_devices.registry import DeviceRegistry
-from dsp_devices.handlers.qudelix import QudelixHandler
-from dsp_devices.base import DeviceNotConnectedError, DeviceCommunicationError
+from peq_devices.registry import DeviceRegistry
+from peq_devices.handlers.qudelix import QudelixHandler
+from peq_devices.base import DeviceNotConnectedError, DeviceCommunicationError
 
 server = Server("qudelix-probe")
 

@@ -13,7 +13,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 try:
-    from dsp_devices import DeviceRegistry
+    from peq_devices import DeviceRegistry
     import hid
 except ImportError:
     DeviceRegistry = None
