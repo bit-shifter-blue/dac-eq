@@ -63,7 +63,7 @@ Then run uninstall again.
 **USB Device Access:**
 - The tool can read/write settings on connected USB DSP devices
 - Only communicates with devices you explicitly connect
-- Protocol is documented in source code (`dsp_devices/handlers/`)
+- Protocol is documented in source code (`peq_devices/handlers/`)
 - No network access (except squiglink-mcp fetches public IEM data)
 
 **Data:**
@@ -75,7 +75,7 @@ Then run uninstall again.
 
 - Source code: https://github.com/bit-shifter-blue/dac-eq
 - Main entry point: `dac-eq.py`
-- Device handlers: `dsp_devices/handlers/`
+- Device handlers: `peq_devices/handlers/`
 - MCP servers: `mcp/*/server.py`
 
 ## If You Have Security Concerns

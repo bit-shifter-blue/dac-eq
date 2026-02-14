@@ -197,7 +197,7 @@ rm -rf dac-eq
 
 **Source code:**
 - CLI tool: `dac-eq.py`
-- Device handlers: `dsp_devices/`
+- Device handlers: `peq_devices/`
 - MCP servers: `mcp/dac-eq-mcp/`, `mcp/squiglink-mcp/`, `mcp/autoeq-mcp/`
 - Target curves: `mcp/autoeq-mcp/targets/`
 - Example profiles: `eq/`

@@ -23,7 +23,7 @@ This file provides guidance to Claude Code when working with the DAC EQ project.
 ```
 dac-eq.py (CLI entry point)
     │
-    └── dsp_devices/
+    └── peq_devices/
         ├── registry.py          # Device discovery and management
         ├── base.py              # Base classes (PEQProfile, FilterDefinition, DeviceCapabilities)
         └── handlers/
@@ -57,7 +57,7 @@ Three interconnected MCP servers provide a complete EQ workflow:
          ▼
 ┌─────────────────┐
 │   dac-eq-mcp    │  Write PEQ to connected DSP device
-│  (server.py)    │  Wraps dsp_devices package as MCP tools
+│  (server.py)    │  Wraps peq_devices package as MCP tools
 └─────────────────┘
 ```
 
@@ -98,7 +98,7 @@ dac-eq/
 ├── requirements.txt          # Python dependencies
 ├── .mcp.json                 # MCP server configuration
 │
-├── dsp_devices/              # Device control library
+├── peq_devices/              # Device control library
 │   ├── __init__.py
 │   ├── base.py               # Core data structures
 │   ├── registry.py           # Device discovery
@@ -425,7 +425,7 @@ Moondrop DSP devices use the modern Conexant-based protocol:
 
 To add support for a new device:
 
-1. **Create handler** in `dsp_devices/handlers/<device>.py`:
+1. **Create handler** in `peq_devices/handlers/<device>.py`:
    ```python
    from ..base import BaseDeviceHandler, DeviceCapabilities, PEQProfile
 
@@ -453,7 +453,7 @@ To add support for a new device:
            pass
    ```
 
-2. **Register handler** in `dsp_devices/handlers/__init__.py`:
+2. **Register handler** in `peq_devices/handlers/__init__.py`:
    ```python
    from .mydevice import MyDeviceHandler
 
@@ -624,7 +624,7 @@ python server.py
 - User-facing docs are README files or inline comments
 
 **Handler files:**
-- `dsp_devices/handlers/<manufacturer>.py`
+- `peq_devices/handlers/<manufacturer>.py`
 - One file per manufacturer, handle multiple models in same class if protocol is shared
 
 ---
