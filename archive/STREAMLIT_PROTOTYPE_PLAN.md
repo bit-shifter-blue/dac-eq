@@ -1,5 +1,14 @@
 # Streamlit Prototype - Conversational EQ Tuning
 
+> **STATUS (2026-02-14):** ✅ **REORGANIZATION COMPLETE** - Project transformed into eq-advisor
+> - ✅ Phase 1 COMPLETE: Basic Streamlit interface
+> - ✅ Phase 2 COMPLETE: Tool use integration (all 6 tools working)
+> - ✅ Phase 2.1 COMPLETE: Real squiglink + autoeq implementations
+> - ✅ MAJOR REFACTOR: Project renamed dac-eq → eq-advisor, dsp_devices → peq_devices
+> - ✅ Self-contained tools/ structure, consolidated requirements
+> - ⏳ **NEXT:** Test Streamlit app end-to-end, then Phase 3 (eq-advisor logic)
+> - 📌 Checkpoint created: `git tag v0.1.0`
+
 **Goal:** Build a working prototype that proves the end-to-end technology: conversational AI → EQ computation → device programming.
 
 **Timeline:** 1-2 weeks part-time
