@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 echo "======================================"
-echo "  DAC-EQ Installation"
+echo "  EQ Advisor Installation"
 echo "======================================"
 echo ""
 
@@ -29,7 +29,7 @@ echo "Checking prerequisites..."
 
 # Check macOS
 if [[ "$OSTYPE" != "darwin"* ]]; then
-    echo -e "${RED}Error: dac-eq requires macOS for USB HID device access.${NC}"
+    echo -e "${RED}Error: eq-advisor requires macOS for USB HID device access.${NC}"
     echo "This tool uses hidapi which only supports macOS."
     exit 1
 fi
@@ -112,11 +112,11 @@ echo ""
 # ========================================
 
 echo "Installing dependencies (this may take a few minutes)..."
-echo "Installing: hidapi, mcp, scipy, numpy, httpx"
+echo "Installing: streamlit, anthropic, hidapi, mcp, autoeq, httpx"
 echo ""
 
 # Install all dependencies from unified requirements file
-pip install -r "$INSTALL_DIR/requirements-all.txt"
+pip install -r "$INSTALL_DIR/requirements.txt"
 
 echo ""
 echo -e "${GREEN}✓${NC} Dependencies installed"
@@ -135,7 +135,7 @@ echo "Generating MCP server configuration..."
 cat > "$INSTALL_DIR/.mcp.json" << EOF
 {
   "mcpServers": {
-    "dac-eq": {
+    "peq-devices": {
       "type": "stdio",
       "command": "$INSTALL_DIR/venv/bin/python",
       "args": ["$INSTALL_DIR/mcp/dac-eq-mcp/server.py"],
@@ -167,7 +167,7 @@ echo ""
 echo "Testing installation..."
 
 # Test CLI tool
-if $PYTHON_CMD "$INSTALL_DIR/dac-eq.py" --list &> /dev/null; then
+if $PYTHON_CMD "$INSTALL_DIR/cli.py" --list &> /dev/null; then
     echo -e "${GREEN}✓${NC} CLI tool working"
 else
     echo -e "${YELLOW}⚠${NC} CLI tool test completed (no devices detected or error occurred)"
@@ -188,9 +188,13 @@ echo "Next steps:"
 echo ""
 echo "1. To use the CLI tool:"
 echo "   source venv/bin/activate"
-echo "   python dac-eq.py --list"
+echo "   python cli.py --list"
 echo ""
-echo "2. To use with Claude Code:"
+echo "2. To use the Streamlit app:"
+echo "   source venv/bin/activate"
+echo "   streamlit run streamlit_app.py"
+echo ""
+echo "3. To use with Claude Code:"
 echo "   cd $INSTALL_DIR"
 echo "   claude"
 echo ""
@@ -200,12 +204,12 @@ echo ""
 echo "   Try: 'Search for Blessing 3 IEM measurements'"
 echo "   Or: '/eq-advisor' for guided EQ workflow"
 echo ""
-echo "3. MCP servers configured:"
-echo "   - dac-eq: DSP device control"
+echo "4. MCP servers configured:"
+echo "   - peq-devices: PEQ device control"
 echo "   - squiglink: IEM frequency response data"
 echo "   - autoeq: EQ optimization"
 echo ""
-echo "4. To uninstall:"
+echo "5. To uninstall:"
 echo "   ./uninstall.sh"
 echo ""
 echo "For more information, see README.md"
