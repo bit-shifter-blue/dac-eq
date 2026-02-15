@@ -146,9 +146,7 @@ class TanchjimHandler(DeviceHandler):
 
     def _build_write_pregain(self, value: float) -> bytes:
         """Build packet to write pregain"""
-        val = int(round(value * 2))
-        if val < 0:
-            val = (val + 256) & 0xFF
+        val = int(round(value * 2)) & 0xFF
         return bytes([self.FIELD_PREGAIN, 0x00, 0x00, 0x00, self.COMMAND_WRITE, 0x00, val, 0x00, 0x00, 0x00])
 
     def _build_commit(self) -> bytes:
@@ -179,10 +177,7 @@ class TanchjimHandler(DeviceHandler):
     def _decode_pregain(self, data: bytes) -> float:
         """Decode pregain from response"""
         val = data[7]
-        if val > 128:
-            return float((val - 256) / 2.0)
-        else:
-            return float(val / 2.0)
+        return float(val - 256 if val > 127 else val) / 2.0
 
     def _read_filter(self, index: int) -> Optional[FilterDefinition]:
         """Read a single filter (0-4)"""
@@ -203,32 +198,26 @@ class TanchjimHandler(DeviceHandler):
 
         return FilterDefinition(freq=freq, gain=gain, q=q, type=filter_type)
 
+    def _write_packet(self, packet: bytes, delay: float = None) -> None:
+        """Write a packet to the device with delay"""
+        self.hid_device.write([self.REPORT_ID] + list(packet))
+        time.sleep(delay if delay is not None else self.WRITE_DELAY)
+
     def _write_filter(self, index: int, filter_def: FilterDefinition) -> None:
         """Write a single filter"""
         gain_freq_id = self.FIELD_FILTER_BASE + index * 2
         q_id = gain_freq_id + 1
 
-        # Write gain/freq
-        self.hid_device.write(
-            [self.REPORT_ID] + list(self._build_write_gain_freq(gain_freq_id, filter_def.freq, filter_def.gain))
-        )
-        time.sleep(self.WRITE_DELAY)
-
-        # Write Q
-        self.hid_device.write(
-            [self.REPORT_ID] + list(self._build_write_q(q_id, filter_def.q, filter_def.type))
-        )
-        time.sleep(self.WRITE_DELAY)
+        self._write_packet(self._build_write_gain_freq(gain_freq_id, filter_def.freq, filter_def.gain))
+        self._write_packet(self._build_write_q(q_id, filter_def.q, filter_def.type))
 
     def _write_pregain(self, value: float) -> None:
         """Write pregain value"""
-        self.hid_device.write([self.REPORT_ID] + list(self._build_write_pregain(value)))
-        time.sleep(self.WRITE_DELAY)
+        self._write_packet(self._build_write_pregain(value))
 
     def _commit(self) -> None:
         """Save changes to device"""
-        self.hid_device.write([self.REPORT_ID] + list(self._build_commit()))
-        time.sleep(self.COMMIT_DELAY)
+        self._write_packet(self._build_commit(), delay=self.COMMIT_DELAY)
 
     def read_peq(self) -> PEQProfile:
         """Read current PEQ settings from device"""
@@ -247,13 +236,8 @@ class TanchjimHandler(DeviceHandler):
 
     def _read_pregain(self) -> float:
         """Read current pregain value"""
-        resp = self._send_and_receive(
-            bytes([self.FIELD_PREGAIN, 0x00, 0x00, 0x00, self.COMMAND_READ, 0x00, 0x00, 0x00, 0x00])
-        )
-        if resp:
-            val = resp[7]
-            return float(val - 256 if val > 127 else val) / 2.0
-        return 0.0
+        resp = self._send_and_receive(self._build_read_packet(self.FIELD_PREGAIN))
+        return self._decode_pregain(resp) if resp else 0.0
 
     def write_peq(self, profile: PEQProfile) -> None:
         """Write PEQ settings to device"""

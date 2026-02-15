@@ -36,7 +36,8 @@ venv/
 # Generated config (will be created by install.sh)
 .mcp.json
 .streamlit/secrets.toml
-archive/
+dev-docs/
+dev-tools/
 
 # Cache directory (user-specific data)
 cache/

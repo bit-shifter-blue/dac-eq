@@ -81,7 +81,29 @@ def cleanup_handler():
 
 def send_command(cmd: int, payload: list, report_id: int = REPORT_ID) -> dict:
     """Send a single command and capture response"""
-    global _device, _device_info
+    global _device, _device_info, _handler
+
+    # Check if handler session exists
+    if _handler is not None and _handler._is_open:
+        # Handler has active connection - probe_send would conflict
+        handler_methods = {
+            0x020F: "get_eq_mode()",
+            0x070E: "set_eq_mode(mode)",
+            0x0123: "read_peq(group)",
+            0x0708: "save_preset(group, preset_index)",
+            0x0709: "load_preset(group, preset_index)",
+            0x070A: "set_preset_name(preset_index, name, group)",
+            0x070B: "get_preset_name(preset_index, group)",
+        }
+
+        if cmd in handler_methods:
+            return {
+                "error": "Handler connection active",
+                "warning": f"Use handler method '{handler_methods[cmd]}' instead of probe_send",
+                "command": f"0x{cmd:04X}",
+                "help": "Restart MCP to close handler connection if you need raw probe access"
+            }
+        # Targeted test - warn but proceed (not in the return block)
 
     # Find device if not already found
     if not _device_info:
@@ -97,11 +119,17 @@ def send_command(cmd: int, payload: list, report_id: int = REPORT_ID) -> dict:
         "report_id": report_id,
         "packet_hex": "",
         "write_result": None,
-        "responses": []
+        "responses": [],
+        "warnings": []
     }
+
+    # Add targeted test warning if handler is active
+    if _handler is not None and _handler._is_open:
+        result["warnings"].append(f"TARGETED TEST: Handler active, bypassing safety checks")
 
     # Reuse existing device if open, otherwise create new one
     device = None
+    need_init = False
 
     try:
         if _device is None:
@@ -109,9 +137,33 @@ def send_command(cmd: int, payload: list, report_id: int = REPORT_ID) -> dict:
             device.open(_device_info['vendor_id'], _device_info['product_id'])
             device.set_nonblocking(False)
             _device = device
+            need_init = True  # New connection needs initialization
+            result["warnings"].append("New probe connection opened - will initialize first")
         else:
             device = _device
             device.set_nonblocking(False)
+
+        # Initialize if this is a new connection
+        if need_init:
+            init_packet = [0] * 64
+            init_packet[0] = 6  # length
+            init_packet[1] = 0x80
+            init_packet[2] = 0x01  # CMD_REQ_INIT_DATA = 0x0100
+            init_packet[3] = 0x00
+            init_packet[4] = 0x00
+            init_packet[5] = 0x00
+            init_packet[6] = 0x04
+
+            device.write([report_id] + init_packet)
+            time.sleep(0.3)  # Wait for init
+            # Drain init responses
+            device.set_nonblocking(True)
+            for _ in range(20):
+                if not device.read(64):
+                    break
+                time.sleep(0.01)
+            device.set_nonblocking(False)
+            result["warnings"].append("Device initialized")
 
         # Build packet: [report_id, length, 0x80, cmd_hi, cmd_lo, ...payload]
         cmd_hi = (cmd >> 8) & 0xFF
@@ -292,6 +344,15 @@ async def list_tools() -> list[Tool]:
             }
         ),
         Tool(
+            name="get_eq_mode",
+            description="Get current EQ mode from device",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        ),
+        Tool(
             name="load_preset",
             description="Load preset from device storage",
             inputSchema={
@@ -431,7 +492,7 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
         try:
             # Convert filter dicts to FilterDefinition objects
-            from dsp_devices.base import FilterDefinition, PEQProfile
+            from tools.peq_devices.base import FilterDefinition, PEQProfile
             filters = [
                 FilterDefinition(
                     freq=f["freq"],
@@ -490,6 +551,18 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         try:
             handler.set_eq_mode(mode)
             result = {"status": "success", "mode": mode, "message": f"Switched to {mode} mode"}
+            return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        except Exception as e:
+            return [TextContent(type="text", text=json.dumps({"error": str(e)}))]
+
+    elif name == "get_eq_mode":
+        handler, dev_info = get_handler_and_device()
+        if not handler:
+            return [TextContent(type="text", text=json.dumps({"error": "Qudelix not found"}))]
+
+        try:
+            mode = handler.get_eq_mode()
+            result = {"status": "success", "mode": mode, "message": f"Current EQ mode: {mode}"}
             return [TextContent(type="text", text=json.dumps(result, indent=2))]
         except Exception as e:
             return [TextContent(type="text", text=json.dumps({"error": str(e)}))]

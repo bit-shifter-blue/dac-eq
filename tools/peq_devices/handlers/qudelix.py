@@ -32,6 +32,7 @@ class QudelixHandler(DeviceHandler):
 
     # Commands
     CMD_REQ_INIT_DATA = 0x0100
+    CMD_REQ_STATUS = 0x020F          # Request device status (includes EQ mode)
     CMD_SET_EQ_ENABLE = 0x0700
     CMD_SET_EQ_TYPE = 0x0701
     CMD_SET_EQ_PREGAIN = 0x0703
@@ -318,6 +319,90 @@ class QudelixHandler(DeviceHandler):
         self._send_cmd(self.CMD_SET_EQ_MODE, [mode_map[mode]])
         time.sleep(self.SETTLE_DELAY)
 
+    def get_eq_mode(self) -> str:
+        """Get current EQ mode from device.
+
+        Returns:
+            Current mode: "usr_spk" (USR+SPK active) or "b20" (B20 active)
+
+        Raises:
+            DeviceNotConnectedError: If device not connected
+            DeviceCommunicationError: If no valid response received
+        """
+        if not self.hid_device:
+            raise DeviceNotConnectedError("Device not connected")
+
+        self._ensure_init()
+
+        if self.debug:
+            print("  Requesting current EQ mode...")
+
+        # Request device status
+        self._send_cmd(self.CMD_REQ_STATUS, [], drain=False)
+        time.sleep(self.SETTLE_DELAY)
+
+        # Read responses looking for the status packet
+        self.hid_device.set_nonblocking(True)
+        start = time.time()
+        while (time.time() - start) < 1.0:  # 1s timeout
+            raw = self.hid_device.read(64)
+            if not raw:
+                time.sleep(self.POLL_INTERVAL)
+                continue
+
+            data = raw[1:] if raw[0] == self.REPORT_ID_IN else raw
+            if len(data) < 12:
+                continue
+
+            # Look for status response packet:
+            # Format: [length=0x11][0x20][0x00][0x0F][0x02][0x01][...][mode_byte at index 10]
+            if data[0] == 0x11 and data[1] == 0x20 and data[3] == 0x0F and data[4] == 0x02:
+                mode_byte = data[10]
+
+                if self.debug:
+                    print(f"  Mode byte: 0x{mode_byte:02X}")
+
+                # Parse mode from byte 10
+                if mode_byte == 0x0F:
+                    mode = "usr_spk"
+                elif mode_byte == 0x1F:
+                    mode = "b20"
+                else:
+                    raise DeviceCommunicationError(f"Unknown mode byte: 0x{mode_byte:02X}")
+
+                if self.debug:
+                    print(f"  Current EQ mode: {mode}")
+
+                self.hid_device.set_nonblocking(False)
+                return mode
+
+        self.hid_device.set_nonblocking(False)
+        raise DeviceCommunicationError("No mode response received from device")
+
+    def set_eq_enable(self, group: str = "USR", enabled: bool = True) -> None:
+        """Enable or disable EQ for a specific group.
+
+        Args:
+            group: EQ group ("USR", "SPK", or "B20")
+            enabled: True to enable EQ, False to disable
+
+        Raises:
+            ValueError: If group is invalid
+            DeviceNotConnectedError: If device not connected
+        """
+        if not self.hid_device:
+            raise DeviceNotConnectedError("Device not connected")
+
+        group_id, _, _ = self._get_group(group)
+        self._ensure_init()
+
+        if self.debug:
+            status = "Enabling" if enabled else "Disabling"
+            print(f"  {status} EQ for {group} group")
+
+        self._send_cmd(self.CMD_SET_EQ_ENABLE, [group_id, 1 if enabled else 0])
+        time.sleep(self.SETTLE_DELAY)
+
     def get_preset_name(self, preset_index: int, group: str = "USR") -> str:
         """Get custom preset name from device.
 
@@ -391,8 +476,10 @@ class QudelixHandler(DeviceHandler):
             if self.debug:
                 print(f"  Preset {preset_index} name: '{name}'")
 
+            self.hid_device.set_nonblocking(False)
             return name
 
+        self.hid_device.set_nonblocking(False)
         raise DeviceCommunicationError(f"No preset name response for index {preset_index}")
 
     def set_preset_name(self, preset_index: int, name: str, group: str = "USR") -> None:
@@ -451,14 +538,19 @@ class QudelixHandler(DeviceHandler):
         self._drain_responses()
         self._initialized = True
 
-    def _send_cmd(self, cmd: int, payload: List[int], drain: bool = True) -> None:
-        """Send HID command."""
+    def _build_packet(self, cmd: int, payload: List[int]) -> List[int]:
+        """Build HID command packet."""
         pkt = [0] * self.REPORT_SIZE
         pkt[0] = len(payload) + 3  # length
         pkt[1] = 0x80              # HID marker
         pkt[2] = (cmd >> 8) & 0xFF
         pkt[3] = cmd & 0xFF
         pkt[4:4 + len(payload)] = payload
+        return pkt
+
+    def _send_cmd(self, cmd: int, payload: List[int], drain: bool = True) -> None:
+        """Send HID command."""
+        pkt = self._build_packet(cmd, payload)
 
         if self.debug:
             print(f"  CMD 0x{cmd:04X}: {' '.join(f'{b:02X}' for b in pkt[:pkt[0]+1])}")
@@ -487,6 +579,7 @@ class QudelixHandler(DeviceHandler):
             if not self.hid_device.read(64):
                 break
             time.sleep(self.POLL_INTERVAL)
+        self.hid_device.set_nonblocking(False)
 
     def _collect_chunks(self, group_id: int, timeout: float = CHUNK_TIMEOUT) -> bytearray:
         """Collect chunked preset response."""
@@ -522,7 +615,9 @@ class QudelixHandler(DeviceHandler):
             if len(chunks) == last_idx + 1:
                 break
 
-        # Reassemble
+        self.hid_device.set_nonblocking(False)
+
+        # Reassemble chunks
         result = bytearray()
         for idx in sorted(chunks.keys()):
             offset, chunk = chunks[idx]
@@ -593,9 +688,7 @@ class QudelixHandler(DeviceHandler):
         return [(v >> 8) & 0xFF, v & 0xFF]
 
     def _to_signed16(self, v: int) -> List[int]:
-        if v < 0:
-            v += 0x10000
-        return self._to_uint16(v)
+        return self._to_uint16(v & 0xFFFF)
 
     def _read_u16(self, data: bytearray, off: int) -> int:
         return data[off] | (data[off + 1] << 8)
