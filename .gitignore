@@ -37,7 +37,7 @@ venv/
 .mcp.json
 .streamlit/secrets.toml
 dev-docs/
-dev-tools/
+#dev-tools/ (these tools could be useful to beta testers, so adding it to the repo for now)
 
 # Cache directory (user-specific data)
 cache/
